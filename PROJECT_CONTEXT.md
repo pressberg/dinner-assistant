@@ -19,13 +19,14 @@ A personalized CLI tool that generates dinner recipe suggestions using Claude AI
 2. `HistoryManager` supplies recent cuisines to avoid repetition
 3. `RecipeGenerator` builds a prompt combining ingredients + preferences + cuisine restrictions
 4. Claude returns structured JSON with 3 recipe options and a recommendation
-5. Recipes are displayed with Rich formatting; user can save, log as made, or view full instructions
+5. Recipes are displayed with Rich formatting; user picks a preferred option, can view full instructions, export to Word doc, save to collection, or log as made
 
 ### Key Design Decisions
 - **Preferences as markdown**: `preferences.md` is injected directly into the prompt, making it easy to edit without code changes
 - **JSON file storage**: No database dependency; `data/` directory holds recipe history and meal logs
 - **Robust JSON parsing**: Response parser handles raw JSON, markdown code blocks, and brace-matching extraction
 - **Cuisine variety**: Automatic 14-day lookback prevents suggesting recently-cooked cuisine types
+- **Word doc export**: Recipes can be exported as `.docx` files to `recipe-book/` with a Notes section for handwritten additions
 
 ## Configuration
 - **Model**: `claude-sonnet-4-20250514` (set in `src/config.py`)
@@ -38,6 +39,7 @@ A personalized CLI tool that generates dinner recipe suggestions using Claude AI
 - `python-dotenv` — Environment variable loading
 - `click` — CLI framework
 - `rich` — Terminal formatting and interactive prompts
+- `python-docx` — Word document generation for recipe export
 
 ## CLI Commands
 | Command | Description |

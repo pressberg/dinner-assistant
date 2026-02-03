@@ -1,6 +1,7 @@
 """Main CLI entry point for Pressberg Kitchen Recipe Assistant"""
 
 import click
+from pathlib import Path
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -139,10 +140,12 @@ def display_recipes(result: dict):
         # Ingredients
         console.print("\n[yellow]Ingredients:[/yellow]")
         for ing in recipe.get('ingredients', []):
-            if ing.endswith('*'):
-                console.print(f"  [dim]{ing[:-1]} (pantry)[/dim]")
+            clean_ing = ing.rstrip('*')
+            style = "dim" if ing.endswith('*') else ""
+            if style:
+                console.print(f"  [dim]{clean_ing}[/dim]")
             else:
-                console.print(f"  {ing}")
+                console.print(f"  {clean_ing}")
 
         # Equipment
         equipment = recipe.get('equipment', [])
@@ -173,46 +176,51 @@ def display_recipes(result: dict):
 
 
 def post_generation_flow(history_manager: HistoryManager, result: dict):
-    """Handle post-generation actions: save, mark as made"""
+    """Handle post-generation actions: select, view, export, save"""
 
     recipes = result.get('recipes', [])
     if not recipes:
         return
 
-    console.print()
-
-    if not Confirm.ask("[yellow]Save a recipe to your collection?[/yellow]", default=False):
-        console.print("[dim]No problem. Enjoy your dinner![/dim]")
-        return
-
     # Select recipe
-    console.print("\n[yellow]Which recipe?[/yellow]")
+    console.print("\n[yellow]Which option do you prefer?[/yellow]")
     for i, recipe in enumerate(recipes, 1):
         console.print(f"  {i}. {recipe['name']}")
+    console.print(f"  0. [dim]None — skip[/dim]")
 
     choice = Prompt.ask(
         "Enter number",
-        choices=[str(i) for i in range(1, len(recipes) + 1)],
+        choices=[str(i) for i in range(0, len(recipes) + 1)],
         default="1"
     )
-    chosen_recipe = recipes[int(choice) - 1]
 
-    # Save it
-    if history_manager.save_recipe(chosen_recipe):
-        console.print(f"[green]✓ Saved '{chosen_recipe['name']}' to your collection.[/green]")
-    else:
-        console.print("[red]Failed to save recipe.[/red]")
+    if choice == "0":
+        console.print("[dim]No problem. Enjoy your dinner![/dim]")
         return
 
-    # Ask if making tonight
-    if Confirm.ask("\n[yellow]Making this tonight?[/yellow]", default=True):
-        cuisine = chosen_recipe.get('cuisine', 'Unknown')
-        history_manager.log_meal(chosen_recipe['name'], cuisine)
-        console.print(f"[green]✓ Logged to recent meals. Enjoy![/green]")
+    chosen_recipe = recipes[int(choice) - 1]
 
-    # Show full instructions option
-    if Confirm.ask("\n[yellow]View full instructions?[/yellow]", default=False):
+    # View full instructions
+    if Confirm.ask("\n[yellow]View full instructions?[/yellow]", default=True):
         show_full_recipe(chosen_recipe)
+
+        # Offer Word doc export
+        if Confirm.ask("\n[yellow]Save recipe as a Word doc?[/yellow]", default=False):
+            export_recipe_to_docx(chosen_recipe)
+
+    # Save to collection
+    if Confirm.ask("\n[yellow]Save to your collection?[/yellow]", default=False):
+        if history_manager.save_recipe(chosen_recipe):
+            console.print(f"[green]✓ Saved '{chosen_recipe['name']}' to your collection.[/green]")
+        else:
+            console.print("[red]Failed to save recipe.[/red]")
+            return
+
+        # Ask if making tonight
+        if Confirm.ask("\n[yellow]Making this tonight?[/yellow]", default=True):
+            cuisine = chosen_recipe.get('cuisine', 'Unknown')
+            history_manager.log_meal(chosen_recipe['name'], cuisine)
+            console.print(f"[green]✓ Logged to recent meals. Enjoy![/green]")
 
 
 def show_full_recipe(recipe: dict):
@@ -225,9 +233,11 @@ def show_full_recipe(recipe: dict):
     # Full ingredients
     console.print("\n[bold yellow]INGREDIENTS[/bold yellow]")
     for ing in recipe.get('ingredients', []):
-        marker = "[dim](pantry)[/dim]" if ing.endswith('*') else ""
         clean_ing = ing.rstrip('*')
-        console.print(f"  • {clean_ing} {marker}")
+        if ing.endswith('*'):
+            console.print(f"  • [dim]{clean_ing}[/dim]")
+        else:
+            console.print(f"  • {clean_ing}")
 
     # Full instructions
     console.print("\n[bold yellow]INSTRUCTIONS[/bold yellow]")
@@ -240,6 +250,72 @@ def show_full_recipe(recipe: dict):
         console.print(f"  {recipe['technique_notes']}")
 
     console.print()
+
+
+def export_recipe_to_docx(recipe: dict):
+    """Export a recipe to a Word document in the recipe-book folder"""
+    try:
+        from docx import Document
+        from docx.shared import Pt, Inches
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+    except ImportError:
+        console.print("[red]python-docx is not installed. Run: pip install python-docx[/red]")
+        return
+
+    doc = Document()
+
+    # Title
+    title = doc.add_heading(recipe['name'], level=0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    # Metadata
+    meta_parts = []
+    if recipe.get('cuisine'):
+        meta_parts.append(recipe['cuisine'])
+    if recipe.get('difficulty'):
+        meta_parts.append(recipe['difficulty'])
+    if recipe.get('total_time_minutes'):
+        meta_parts.append(f"{recipe['total_time_minutes']} min total")
+    if meta_parts:
+        meta_para = doc.add_paragraph(' · '.join(meta_parts))
+        meta_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    if recipe.get('description'):
+        doc.add_paragraph(recipe['description'])
+
+    # Ingredients
+    doc.add_heading('Ingredients', level=1)
+    for ing in recipe.get('ingredients', []):
+        clean_ing = ing.rstrip('*')
+        doc.add_paragraph(clean_ing, style='List Bullet')
+
+    # Instructions
+    doc.add_heading('Instructions', level=1)
+    for i, step in enumerate(recipe.get('instructions', []), 1):
+        doc.add_paragraph(f"{i}. {step}")
+
+    # Technique notes
+    if recipe.get('technique_notes'):
+        doc.add_heading('Technique Notes', level=1)
+        doc.add_paragraph(recipe['technique_notes'])
+
+    # Notes section (blank, for manual additions)
+    doc.add_heading('Notes', level=1)
+    for _ in range(8):
+        p = doc.add_paragraph()
+        p.add_run('_' * 70).font.color.rgb = None
+
+    # Save to recipe-book subfolder
+    recipe_book_dir = Path(__file__).resolve().parent.parent / 'recipe-book'
+    recipe_book_dir.mkdir(exist_ok=True)
+
+    # Sanitize filename
+    safe_name = "".join(c if c.isalnum() or c in (' ', '-') else '' for c in recipe['name']).strip()
+    safe_name = safe_name.replace(' ', '_')
+    filepath = recipe_book_dir / f"{safe_name}.docx"
+
+    doc.save(str(filepath))
+    console.print(f"[green]✓ Saved to {filepath}[/green]")
 
 
 def mark_recipe_made_interactive(history_manager: HistoryManager):
