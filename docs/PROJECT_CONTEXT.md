@@ -5,6 +5,14 @@
 
 ## Recent changes
 
+### Session: 2026-02-18 - Fix screen stacking bug in GUI
+- Rewrote `src/gui.py` to fix bug where screens stacked on top of each other
+  - Root cause: `_clear_screen` only destroyed stored `self.current_screen` reference, missing orphaned child widgets
+  - Fix: All screens now pack into a `self.container` frame; `_clear_screen` destroys all container children
+  - Removed separate screen classes (WelcomeScreen, IngredientsScreen, etc.) in favor of inline methods
+  - Removed custom widget subclasses (RetroButton, RetroLabel, etc.) in favor of standard tkinter widgets with a `_make_button` helper
+  - Same visual appearance and functionality, simpler architecture
+
 ### Session: 2026-02-18 - Retro Mac GUI
 - Added `src/gui.py`: Full tkinter GUI with Mac OS 8/9 retro styling
   - Wizard flow: Welcome -> Ingredients -> Constraints -> Loading -> Results
