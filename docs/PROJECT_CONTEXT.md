@@ -5,23 +5,14 @@
 
 ## Recent changes
 
-### Session: 2026-02-18 - Fix screen stacking bug in GUI
-- Rewrote `src/gui.py` to fix bug where screens stacked on top of each other
-  - Root cause: `_clear_screen` only destroyed stored `self.current_screen` reference, missing orphaned child widgets
-  - Fix: All screens now pack into a `self.container` frame; `_clear_screen` destroys all container children
-  - Removed separate screen classes (WelcomeScreen, IngredientsScreen, etc.) in favor of inline methods
-  - Removed custom widget subclasses (RetroButton, RetroLabel, etc.) in favor of standard tkinter widgets with a `_make_button` helper
-  - Same visual appearance and functionality, simpler architecture
-
-### Session: 2026-02-18 - Retro Mac GUI
-- Added `src/gui.py`: Full tkinter GUI with Mac OS 8/9 retro styling
-  - Wizard flow: Welcome -> Ingredients -> Constraints -> Loading -> Results
-  - Quick-add ingredient buttons (proteins, vegetables, starches)
-  - Constraint checkboxes (time, equipment, dietary preferences)
-  - Recipe results with View Full, Save and Make Tonight actions
-  - History browser and recent meals screens
-  - Threaded recipe generation to keep UI responsive
-- Added `run_gui.py`: Root-level launcher script
+### Session: 2026-02-18 - Clean rewrite of GUI
+- Rewrote `src/gui.py` from scratch with simplified architecture
+  - Single `DinnerAssistantApp` class, no separate screen classes or custom widget subclasses
+  - One `main_frame` holds all content; `_clear()` destroys all children before each screen transition
+  - Screens: welcome, ingredients (quick-add grid + custom entry), constraints (checkboxes), loading (animated dots), results (scrollable cards), full recipe view, history, recent meals
+  - Retro Mac OS 8/9 styling: gray #DDDDDD background, Geneva font, raised #CCCCCC buttons
+  - Threaded recipe generation keeps UI responsive
+  - Uses existing `RecipeGenerator` and `HistoryManager`
 
 ## Architecture
 - `src/recipe_generator.py` - Claude API integration for recipe generation

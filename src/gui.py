@@ -1,710 +1,628 @@
-"""
-Pressberg Kitchen Recipe Assistant - Retro Mac GUI
-A nostalgic journey back to Mac OS 8/9 aesthetics
-"""
+"""Retro Mac OS 8/9 styled GUI for Pressberg Kitchen Recipe Assistant"""
 
 import tkinter as tk
-from tkinter import messagebox, scrolledtext
+from tkinter import messagebox
 import threading
-from typing import Optional, Dict, List
+from datetime import datetime
 from .recipe_generator import RecipeGenerator
 from .history_manager import HistoryManager
 
 
-# ============================================================
-# RETRO MAC COLOR PALETTE & STYLING
-# ============================================================
+# Style constants
+BG_COLOR = "#DDDDDD"
+BTN_COLOR = "#CCCCCC"
+FONT_FAMILY = "Geneva"
+FONT = (FONT_FAMILY, 12)
+FONT_BOLD = (FONT_FAMILY, 12, "bold")
+FONT_SMALL = (FONT_FAMILY, 10)
+FONT_TITLE = (FONT_FAMILY, 18, "bold")
+FONT_HEADING = (FONT_FAMILY, 14, "bold")
 
-class RetroMacStyle:
-    """Mac OS 8/9 inspired color palette and styling constants"""
+QUICK_INGREDIENTS = [
+    "Chicken", "Ground Turkey", "Salmon", "Shrimp", "Tofu",
+    "Rice", "Pasta", "Potatoes", "Bread",
+    "Broccoli", "Spinach", "Bell Peppers", "Onions", "Tomatoes",
+    "Cheese", "Eggs", "Beans", "Mushrooms",
+]
 
-    # Colors
-    WINDOW_BG = "#DDDDDD"
-    BUTTON_BG = "#CCCCCC"
-    BUTTON_ACTIVE = "#BBBBBB"
-    TEXT_BG = "#FFFFFF"
-    TEXT_FG = "#000000"
-    LABEL_FG = "#000000"
-    ACCENT = "#000099"
-    BORDER = "#888888"
-    HIGHLIGHT = "#FFFFCC"
+CONSTRAINT_OPTIONS = [
+    ("Under 30 minutes", "under 30 minutes"),
+    ("Weeknight easy", "weeknight easy, minimal cleanup"),
+    ("Use Instant Pot", "use instant pot"),
+    ("Use cast iron", "use cast iron skillet"),
+    ("No pasta", "no pasta"),
+    ("Low carb", "low carb"),
+    ("One pot meal", "one pot meal"),
+    ("Kid friendly", "kid friendly"),
+]
 
-    # Fonts
-    FONT_MAIN = ("Geneva", 12)
-    FONT_BOLD = ("Geneva", 12, "bold")
-    FONT_TITLE = ("Geneva", 16, "bold")
-    FONT_SMALL = ("Geneva", 10)
-    FONT_MONO = ("Monaco", 11)
-
-
-# ============================================================
-# MAIN APPLICATION
-# ============================================================
 
 class DinnerAssistantApp:
-    """Main application controller"""
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Pressberg Kitchen")
+        self.root.configure(bg=BG_COLOR)
+        self.root.geometry("700x750")
+        self.root.resizable(True, True)
 
-    def __init__(self):
-        self.root = tk.Tk()
-        self.root.title("Pressberg Kitchen Recipe Assistant")
-        self.root.geometry("700x650")
-        self.root.configure(bg=RetroMacStyle.WINDOW_BG)
-        self.root.minsize(600, 500)
+        self.main_frame = tk.Frame(root, bg=BG_COLOR)
+        self.main_frame.pack(fill=tk.BOTH, expand=True, padx=16, pady=16)
 
-        # Main container - all screens go here
-        self.container = tk.Frame(self.root, bg=RetroMacStyle.WINDOW_BG)
-        self.container.pack(fill=tk.BOTH, expand=True)
-
-        # Initialize managers
         self.history_manager = HistoryManager()
-        self.generator: Optional[RecipeGenerator] = None
+        self.generator = None
+        self.selected_ingredients = []
+        self.result = None
 
-        # State
-        self.ingredients: List[str] = []
-        self.constraints: Optional[str] = None
+        self.show_welcome()
 
-        # Show welcome screen
-        self._show_welcome()
-
-    def _clear_screen(self):
-        """Clear all widgets from container"""
-        for widget in self.container.winfo_children():
+    def _clear(self):
+        for widget in self.main_frame.winfo_children():
             widget.destroy()
 
-    def _show_welcome(self):
-        """Show the welcome screen"""
-        self._clear_screen()
-
-        frame = tk.Frame(self.container, bg=RetroMacStyle.WINDOW_BG)
-        frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-
-        # Logo
-        logo_text = """
-+=============================+
-|    PRESSBERG KITCHEN        |
-|      Recipe Assistant       |
-+=============================+
-        """
-        tk.Label(
-            frame,
-            text=logo_text,
-            font=RetroMacStyle.FONT_MONO,
-            bg=RetroMacStyle.WINDOW_BG,
-            fg=RetroMacStyle.ACCENT,
-            justify=tk.CENTER
-        ).pack(pady=(40, 20))
-
-        tk.Label(
-            frame,
-            text="What would you like to do?",
-            font=RetroMacStyle.FONT_BOLD,
-            bg=RetroMacStyle.WINDOW_BG
-        ).pack(pady=(10, 20))
-
-        # Buttons
-        btn_frame = tk.Frame(frame, bg=RetroMacStyle.WINDOW_BG)
-        btn_frame.pack(pady=20)
-
-        self._make_button(btn_frame, "Generate Recipes", self._show_ingredients, width=25).pack(pady=8)
-        self._make_button(btn_frame, "View Recipe History", self._show_history, width=25).pack(pady=8)
-        self._make_button(btn_frame, "Recent Meals", self._show_recent, width=25).pack(pady=8)
-
-        # Version
-        tk.Label(
-            frame,
-            text="Version 1.0 - Matt & Jennifer Pressberg",
-            font=RetroMacStyle.FONT_SMALL,
-            bg=RetroMacStyle.WINDOW_BG,
-            fg=RetroMacStyle.BORDER
-        ).pack(side=tk.BOTTOM, pady=10)
-
-    def _show_ingredients(self):
-        """Show ingredient input screen"""
-        self._clear_screen()
-        self.ingredients = []
-
-        frame = tk.Frame(self.container, bg=RetroMacStyle.WINDOW_BG)
-        frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-
-        # Title
-        tk.Label(
-            frame,
-            text="What's in Your Kitchen?",
-            font=RetroMacStyle.FONT_TITLE,
-            bg=RetroMacStyle.WINDOW_BG
-        ).pack(pady=(10, 5))
-
-        tk.Label(
-            frame,
-            text="Click ingredients below or type your own.\nPantry staples (garlic, soy sauce, etc.) are assumed.",
-            font=RetroMacStyle.FONT_MAIN,
-            bg=RetroMacStyle.WINDOW_BG
-        ).pack(pady=(0, 15))
-
-        # Quick ingredients
-        quick_frame = tk.LabelFrame(
-            frame,
-            text=" Quick Add ",
-            font=RetroMacStyle.FONT_BOLD,
-            bg=RetroMacStyle.WINDOW_BG,
-            relief=tk.GROOVE,
-            borderwidth=2
+    def _make_button(self, parent, text, command, width=20):
+        return tk.Button(
+            parent, text=text, command=command,
+            font=FONT, bg=BTN_COLOR, relief=tk.RAISED, bd=2,
+            activebackground="#BBBBBB", width=width,
         )
-        quick_frame.pack(fill=tk.X, pady=10, padx=10)
 
-        quick_ingredients = [
-            ["Chicken", "Ground Turkey", "Ground Beef", "Salmon", "Shrimp", "Steak"],
-            ["Spinach", "Kale", "Broccoli", "Mushrooms", "Bell Peppers", "Tomatoes"],
-            ["Rice", "Pasta", "Potatoes", "Beans", "Tofu", "Eggs"],
-        ]
-
-        for row in quick_ingredients:
-            row_frame = tk.Frame(quick_frame, bg=RetroMacStyle.WINDOW_BG)
-            row_frame.pack(fill=tk.X, padx=10, pady=3)
-            for ingredient in row:
-                btn = tk.Button(
-                    row_frame,
-                    text=ingredient,
-                    font=RetroMacStyle.FONT_SMALL,
-                    bg=RetroMacStyle.BUTTON_BG,
-                    relief=tk.RAISED,
-                    borderwidth=1,
-                    padx=6,
-                    pady=2,
-                    command=lambda i=ingredient: self._add_ingredient(i)
-                )
-                btn.pack(side=tk.LEFT, padx=2)
-
-        # Manual entry
-        entry_frame = tk.Frame(frame, bg=RetroMacStyle.WINDOW_BG)
-        entry_frame.pack(fill=tk.X, pady=15, padx=10)
-
-        tk.Label(
-            entry_frame,
-            text="Or type ingredients:",
-            font=RetroMacStyle.FONT_MAIN,
-            bg=RetroMacStyle.WINDOW_BG
-        ).pack(anchor=tk.W)
-
-        entry_row = tk.Frame(entry_frame, bg=RetroMacStyle.WINDOW_BG)
-        entry_row.pack(fill=tk.X, pady=5)
-
-        self.ingredient_entry = tk.Entry(
-            entry_row,
-            font=RetroMacStyle.FONT_MAIN,
-            bg=RetroMacStyle.TEXT_BG,
-            relief=tk.SUNKEN,
-            borderwidth=2,
-            width=40
+    def _make_label(self, parent, text, font=FONT, anchor="w", **kwargs):
+        return tk.Label(
+            parent, text=text, font=font, bg=BG_COLOR, anchor=anchor, **kwargs
         )
-        self.ingredient_entry.pack(side=tk.LEFT, padx=(0, 10))
-        self.ingredient_entry.bind("<Return>", lambda e: self._add_from_entry())
 
-        self._make_button(entry_row, "Add", self._add_from_entry, width=8).pack(side=tk.LEFT)
+    # ── Welcome screen ──────────────────────────────────────────────
 
-        # Selected ingredients
-        selected_frame = tk.LabelFrame(
-            frame,
-            text=" Selected Ingredients ",
-            font=RetroMacStyle.FONT_BOLD,
-            bg=RetroMacStyle.WINDOW_BG,
-            relief=tk.GROOVE,
-            borderwidth=2
+    def show_welcome(self):
+        self._clear()
+
+        self._make_label(
+            self.main_frame, "Pressberg Kitchen", font=FONT_TITLE, anchor="center"
+        ).pack(pady=(30, 5))
+
+        self._make_label(
+            self.main_frame, "Recipe Assistant", font=FONT_HEADING, anchor="center"
+        ).pack(pady=(0, 30))
+
+        self._make_label(
+            self.main_frame,
+            "What would you like to do?",
+            font=FONT, anchor="center",
+        ).pack(pady=(0, 20))
+
+        btn_frame = tk.Frame(self.main_frame, bg=BG_COLOR)
+        btn_frame.pack()
+
+        self._make_button(
+            btn_frame, "New dinner", self.show_ingredients, width=24
+        ).pack(pady=6)
+
+        self._make_button(
+            btn_frame, "Saved recipes", self.show_history, width=24
+        ).pack(pady=6)
+
+        self._make_button(
+            btn_frame, "Recent meals", self.show_recent_meals, width=24
+        ).pack(pady=6)
+
+    # ── Ingredients screen ───────────────────────────────────────────
+
+    def show_ingredients(self):
+        self._clear()
+        self.selected_ingredients = []
+
+        self._make_label(
+            self.main_frame, "What ingredients do you have?", font=FONT_HEADING
+        ).pack(anchor="w", pady=(0, 10))
+
+        self._make_label(
+            self.main_frame,
+            "Tap to add, or type your own below. Pantry staples are assumed.",
+            font=FONT_SMALL,
+        ).pack(anchor="w", pady=(0, 10))
+
+        # Quick-add grid
+        grid_frame = tk.Frame(self.main_frame, bg=BG_COLOR)
+        grid_frame.pack(fill=tk.X, pady=(0, 10))
+
+        self.ingredient_buttons = {}
+        cols = 4
+        for i, ing in enumerate(QUICK_INGREDIENTS):
+            btn = tk.Button(
+                grid_frame, text=ing, font=FONT_SMALL,
+                bg=BTN_COLOR, relief=tk.RAISED, bd=2,
+                activebackground="#BBBBBB",
+                command=lambda name=ing: self._toggle_ingredient(name),
+            )
+            btn.grid(row=i // cols, column=i % cols, padx=3, pady=3, sticky="ew")
+            self.ingredient_buttons[ing] = btn
+
+        for c in range(cols):
+            grid_frame.columnconfigure(c, weight=1)
+
+        # Custom entry
+        entry_frame = tk.Frame(self.main_frame, bg=BG_COLOR)
+        entry_frame.pack(fill=tk.X, pady=(5, 5))
+
+        self._make_label(entry_frame, "Other:", font=FONT_SMALL).pack(side=tk.LEFT)
+
+        self.custom_entry = tk.Entry(entry_frame, font=FONT, width=30)
+        self.custom_entry.pack(side=tk.LEFT, padx=(5, 5))
+
+        tk.Button(
+            entry_frame, text="Add", font=FONT_SMALL,
+            bg=BTN_COLOR, relief=tk.RAISED, bd=2,
+            command=self._add_custom_ingredient,
+        ).pack(side=tk.LEFT)
+
+        # Selected display
+        self._make_label(
+            self.main_frame, "Selected:", font=FONT_BOLD
+        ).pack(anchor="w", pady=(10, 2))
+
+        self.selected_label = self._make_label(
+            self.main_frame, "(none yet)", font=FONT_SMALL
         )
-        selected_frame.pack(fill=tk.BOTH, expand=True, pady=10, padx=10)
+        self.selected_label.pack(anchor="w", pady=(0, 10))
 
-        self.selected_listbox = tk.Listbox(
-            selected_frame,
-            font=RetroMacStyle.FONT_MAIN,
-            bg=RetroMacStyle.TEXT_BG,
-            relief=tk.SUNKEN,
-            borderwidth=2,
-            height=6
-        )
-        self.selected_listbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=(5, 5))
+        # Nav buttons
+        nav = tk.Frame(self.main_frame, bg=BG_COLOR)
+        nav.pack(fill=tk.X, pady=(10, 0))
 
-        self._make_button(selected_frame, "Remove Selected", self._remove_ingredient, width=15).pack(pady=(0, 10))
+        self._make_button(nav, "Back", self.show_welcome, width=10).pack(side=tk.LEFT)
+        self._make_button(nav, "Next →", self.show_constraints, width=10).pack(side=tk.RIGHT)
 
-        # Navigation
-        nav_frame = tk.Frame(frame, bg=RetroMacStyle.WINDOW_BG)
-        nav_frame.pack(fill=tk.X, pady=15)
+    def _toggle_ingredient(self, name):
+        btn = self.ingredient_buttons[name]
+        if name in self.selected_ingredients:
+            self.selected_ingredients.remove(name)
+            btn.configure(relief=tk.RAISED, bg=BTN_COLOR)
+        else:
+            self.selected_ingredients.append(name)
+            btn.configure(relief=tk.SUNKEN, bg="#AACCAA")
+        self._update_selected_label()
 
-        self._make_button(nav_frame, "< Back", self._show_welcome, width=10).pack(side=tk.LEFT)
-        self._make_button(nav_frame, "Next >", self._on_ingredients_next, width=10).pack(side=tk.RIGHT)
+    def _add_custom_ingredient(self):
+        text = self.custom_entry.get().strip()
+        if text and text not in self.selected_ingredients:
+            self.selected_ingredients.append(text)
+            self.custom_entry.delete(0, tk.END)
+            self._update_selected_label()
 
-    def _add_ingredient(self, ingredient: str):
-        """Add ingredient to list"""
-        ingredient = ingredient.strip().lower()
-        if ingredient and ingredient not in self.ingredients:
-            self.ingredients.append(ingredient)
-            self.selected_listbox.insert(tk.END, f"  {ingredient.title()}")
+    def _update_selected_label(self):
+        if self.selected_ingredients:
+            self.selected_label.configure(text=", ".join(self.selected_ingredients))
+        else:
+            self.selected_label.configure(text="(none yet)")
 
-    def _add_from_entry(self):
-        """Add from text entry"""
-        text = self.ingredient_entry.get().strip()
-        if text:
-            for item in text.split(","):
-                self._add_ingredient(item)
-            self.ingredient_entry.delete(0, tk.END)
+    # ── Constraints screen ───────────────────────────────────────────
 
-    def _remove_ingredient(self):
-        """Remove selected ingredient"""
-        selection = self.selected_listbox.curselection()
-        if selection:
-            index = selection[0]
-            self.selected_listbox.delete(index)
-            del self.ingredients[index]
-
-    def _on_ingredients_next(self):
-        """Validate and proceed"""
-        if not self.ingredients:
-            messagebox.showwarning("No Ingredients", "Please add at least one ingredient.")
+    def show_constraints(self):
+        if not self.selected_ingredients:
+            messagebox.showwarning("No ingredients", "Please select at least one ingredient.")
             return
-        self._show_constraints()
 
-    def _show_constraints(self):
-        """Show constraints screen"""
-        self._clear_screen()
+        self._clear()
 
-        frame = tk.Frame(self.container, bg=RetroMacStyle.WINDOW_BG)
-        frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        self._make_label(
+            self.main_frame, "Any constraints?", font=FONT_HEADING
+        ).pack(anchor="w", pady=(0, 10))
 
-        # Title
-        tk.Label(
-            frame,
-            text="Any Constraints Tonight?",
-            font=RetroMacStyle.FONT_TITLE,
-            bg=RetroMacStyle.WINDOW_BG
-        ).pack(pady=(10, 20))
+        self._make_label(
+            self.main_frame, "Check all that apply, or skip to generate.",
+            font=FONT_SMALL,
+        ).pack(anchor="w", pady=(0, 10))
 
-        # Variables
-        self.weeknight = tk.BooleanVar(value=True)
-        self.quick = tk.BooleanVar(value=False)
-        self.instant_pot = tk.BooleanVar(value=False)
-        self.cast_iron = tk.BooleanVar(value=False)
-        self.wok = tk.BooleanVar(value=False)
-        self.air_fryer = tk.BooleanVar(value=False)
-        self.no_pasta = tk.BooleanVar(value=False)
-        self.extra_spicy = tk.BooleanVar(value=False)
-        self.custom_var = tk.StringVar()
+        self.constraint_vars = {}
+        for label, value in CONSTRAINT_OPTIONS:
+            var = tk.BooleanVar()
+            cb = tk.Checkbutton(
+                self.main_frame, text=label, variable=var,
+                font=FONT, bg=BG_COLOR, activebackground=BG_COLOR,
+                anchor="w",
+            )
+            cb.pack(anchor="w", padx=10, pady=2)
+            self.constraint_vars[value] = var
 
-        # Time
-        time_frame = tk.LabelFrame(frame, text=" Time ", font=RetroMacStyle.FONT_BOLD,
-                                    bg=RetroMacStyle.WINDOW_BG, relief=tk.GROOVE, borderwidth=2)
-        time_frame.pack(fill=tk.X, pady=10, padx=10)
+        # Nav
+        nav = tk.Frame(self.main_frame, bg=BG_COLOR)
+        nav.pack(fill=tk.X, pady=(20, 0))
 
-        tk.Checkbutton(time_frame, text="Weeknight mode (45 min active or less)",
-                       variable=self.weeknight, font=RetroMacStyle.FONT_MAIN,
-                       bg=RetroMacStyle.WINDOW_BG).pack(anchor=tk.W, padx=20, pady=2)
-        tk.Checkbutton(time_frame, text="Quick meal (under 30 min total)",
-                       variable=self.quick, font=RetroMacStyle.FONT_MAIN,
-                       bg=RetroMacStyle.WINDOW_BG).pack(anchor=tk.W, padx=20, pady=2)
+        self._make_button(nav, "← Back", self.show_ingredients, width=10).pack(side=tk.LEFT)
+        self._make_button(nav, "Generate!", self._run_generation, width=14).pack(side=tk.RIGHT)
 
-        # Equipment
-        equip_frame = tk.LabelFrame(frame, text=" Prefer Equipment ", font=RetroMacStyle.FONT_BOLD,
-                                     bg=RetroMacStyle.WINDOW_BG, relief=tk.GROOVE, borderwidth=2)
-        equip_frame.pack(fill=tk.X, pady=10, padx=10)
+    def _get_constraints_text(self):
+        active = [k for k, v in self.constraint_vars.items() if v.get()]
+        return ", ".join(active) if active else None
 
-        equip_row = tk.Frame(equip_frame, bg=RetroMacStyle.WINDOW_BG)
-        equip_row.pack(fill=tk.X, padx=20, pady=5)
+    # ── Loading screen ───────────────────────────────────────────────
 
-        for text, var in [("Instant Pot", self.instant_pot), ("Cast Iron", self.cast_iron),
-                          ("Wok", self.wok), ("Air Fryer", self.air_fryer)]:
-            tk.Checkbutton(equip_row, text=text, variable=var, font=RetroMacStyle.FONT_MAIN,
-                           bg=RetroMacStyle.WINDOW_BG).pack(side=tk.LEFT, padx=10)
+    def show_loading(self):
+        self._clear()
 
-        # Other
-        other_frame = tk.LabelFrame(frame, text=" Other ", font=RetroMacStyle.FONT_BOLD,
-                                     bg=RetroMacStyle.WINDOW_BG, relief=tk.GROOVE, borderwidth=2)
-        other_frame.pack(fill=tk.X, pady=10, padx=10)
+        self._make_label(
+            self.main_frame, "Generating recipes...", font=FONT_HEADING, anchor="center"
+        ).pack(pady=(80, 20))
 
-        other_row = tk.Frame(other_frame, bg=RetroMacStyle.WINDOW_BG)
-        other_row.pack(fill=tk.X, padx=20, pady=5)
+        self._make_label(
+            self.main_frame,
+            "Consulting Claude with your ingredients\nand preferences. One moment.",
+            font=FONT, anchor="center", justify=tk.CENTER,
+        ).pack()
 
-        tk.Checkbutton(other_row, text="No pasta tonight", variable=self.no_pasta,
-                       font=RetroMacStyle.FONT_MAIN, bg=RetroMacStyle.WINDOW_BG).pack(side=tk.LEFT, padx=10)
-        tk.Checkbutton(other_row, text="Extra spicy!", variable=self.extra_spicy,
-                       font=RetroMacStyle.FONT_MAIN, bg=RetroMacStyle.WINDOW_BG).pack(side=tk.LEFT, padx=10)
-
-        custom_row = tk.Frame(other_frame, bg=RetroMacStyle.WINDOW_BG)
-        custom_row.pack(fill=tk.X, padx=20, pady=5)
-
-        tk.Label(custom_row, text="Custom:", font=RetroMacStyle.FONT_MAIN,
-                 bg=RetroMacStyle.WINDOW_BG).pack(side=tk.LEFT)
-        tk.Entry(custom_row, textvariable=self.custom_var, font=RetroMacStyle.FONT_MAIN,
-                 bg=RetroMacStyle.TEXT_BG, width=30).pack(side=tk.LEFT, padx=10)
-
-        # Navigation
-        nav_frame = tk.Frame(frame, bg=RetroMacStyle.WINDOW_BG)
-        nav_frame.pack(fill=tk.X, pady=20)
-
-        self._make_button(nav_frame, "< Back", self._show_ingredients, width=10).pack(side=tk.LEFT)
-        self._make_button(nav_frame, "Generate Recipes >", self._on_constraints_next, width=18).pack(side=tk.RIGHT)
-
-    def _get_constraints(self) -> Optional[str]:
-        """Build constraint string"""
-        constraints = []
-        if self.weeknight.get():
-            constraints.append("weeknight (45 min active max)")
-        if self.quick.get():
-            constraints.append("under 30 minutes total")
-        if self.instant_pot.get():
-            constraints.append("use Instant Pot")
-        if self.cast_iron.get():
-            constraints.append("use cast iron skillet")
-        if self.wok.get():
-            constraints.append("use wok")
-        if self.air_fryer.get():
-            constraints.append("use air fryer")
-        if self.no_pasta.get():
-            constraints.append("no pasta")
-        if self.extra_spicy.get():
-            constraints.append("make it extra spicy")
-        custom = self.custom_var.get().strip()
-        if custom:
-            constraints.append(custom)
-        return ", ".join(constraints) if constraints else None
-
-    def _on_constraints_next(self):
-        """Generate recipes"""
-        self.constraints = self._get_constraints()
-        self._show_loading()
-
-    def _show_loading(self):
-        """Show loading screen"""
-        self._clear_screen()
-
-        frame = tk.Frame(self.container, bg=RetroMacStyle.WINDOW_BG)
-        frame.pack(fill=tk.BOTH, expand=True)
-
-        center = tk.Frame(frame, bg=RetroMacStyle.WINDOW_BG)
-        center.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
-
-        tk.Label(
-            center,
-            text="""
-+==============================+
-|                              |
-|     Consulting Chef...       |
-|                              |
-+==============================+
-            """,
-            font=RetroMacStyle.FONT_MONO,
-            bg=RetroMacStyle.WINDOW_BG,
-            fg=RetroMacStyle.ACCENT
-        ).pack(pady=20)
-
-        self.loading_label = tk.Label(
-            center,
-            text="Generating recipes...",
-            font=RetroMacStyle.FONT_BOLD,
-            bg=RetroMacStyle.WINDOW_BG
+        self.loading_dots = self._make_label(
+            self.main_frame, "", font=FONT_TITLE, anchor="center"
         )
-        self.loading_label.pack()
+        self.loading_dots.pack(pady=20)
 
-        self.progress_label = tk.Label(
-            center,
-            text="[..........]\n",
-            font=RetroMacStyle.FONT_MONO,
-            bg=RetroMacStyle.WINDOW_BG,
-            fg=RetroMacStyle.ACCENT
-        )
-        self.progress_label.pack()
+        self._animate_dots(0)
 
-        # Start animation and generation
-        self.loading_dots = 0
-        self.loading_active = True
-        self._animate_loading()
-        self._generate_recipes()
-
-    def _animate_loading(self):
-        """Animate loading indicator"""
-        if not self.loading_active:
+    def _animate_dots(self, count):
+        if not self.loading_dots.winfo_exists():
             return
-        self.loading_dots = (self.loading_dots + 1) % 11
-        bar = "#" * self.loading_dots + "." * (10 - self.loading_dots)
-        self.progress_label.config(text=f"[{bar}]")
-        self.root.after(200, self._animate_loading)
+        dots = "." * ((count % 3) + 1)
+        self.loading_dots.configure(text=dots)
+        self.root.after(500, self._animate_dots, count + 1)
 
-    def _generate_recipes(self):
-        """Generate recipes in background"""
+    def _run_generation(self):
+        constraints = self._get_constraints_text()
+        self.show_loading()
+
         def generate():
             try:
-                if not self.generator:
+                if self.generator is None:
                     self.generator = RecipeGenerator()
-
                 recent_cuisines = self.history_manager.get_recent_cuisines()
-                results = self.generator.generate_recipes(
-                    ingredients=self.ingredients,
+                result = self.generator.generate_recipes(
+                    ingredients=self.selected_ingredients,
                     recent_cuisines=recent_cuisines,
-                    constraints=self.constraints
+                    constraints=constraints,
                 )
-                self.root.after(0, lambda: self._show_results(results))
+                self.root.after(0, self.show_results, result)
             except Exception as e:
-                self.root.after(0, lambda: self._show_error(str(e)))
+                self.root.after(0, self._show_error, str(e))
 
         thread = threading.Thread(target=generate, daemon=True)
         thread.start()
 
-    def _show_error(self, error: str):
-        """Show error and return to ingredients"""
-        self.loading_active = False
-        messagebox.showerror("Error", f"Failed to generate recipes:\n{error}\n\nPlease try again.")
-        self._show_ingredients()
+    def _show_error(self, msg):
+        self._clear()
+        self._make_label(
+            self.main_frame, "Something went wrong", font=FONT_HEADING
+        ).pack(anchor="w", pady=(20, 10))
 
-    def _show_results(self, results: Dict):
-        """Show results screen"""
-        self.loading_active = False
-        self._clear_screen()
+        self._make_label(self.main_frame, msg, font=FONT_SMALL, wraplength=650).pack(
+            anchor="w", pady=(0, 20)
+        )
 
-        recipes = results.get('recipes', [])
-        recommendation = results.get('recommendation', {})
-        rec_index = recommendation.get('recipe_index', 0)
+        self._make_button(self.main_frame, "Back to start", self.show_welcome).pack()
 
-        frame = tk.Frame(self.container, bg=RetroMacStyle.WINDOW_BG)
-        frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+    # ── Results screen ───────────────────────────────────────────────
 
-        # Title
-        tk.Label(
-            frame,
-            text="Tonight's Options",
-            font=RetroMacStyle.FONT_TITLE,
-            bg=RetroMacStyle.WINDOW_BG
-        ).pack(pady=(10, 10))
+    def show_results(self, result):
+        self._clear()
+        self.result = result
 
-        # Recommendation
-        if recipes and recommendation.get('reasoning'):
-            rec_frame = tk.LabelFrame(frame, text=" Recommended ", font=RetroMacStyle.FONT_BOLD,
-                                       bg=RetroMacStyle.WINDOW_BG, relief=tk.GROOVE, borderwidth=2)
-            rec_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
+        recipes = result.get("recipes", [])
+        recommendation = result.get("recommendation", {})
+        rec_index = recommendation.get("recipe_index", 0)
 
-            tk.Label(rec_frame, text=f"* {recipes[rec_index]['name']}", font=RetroMacStyle.FONT_BOLD,
-                     bg=RetroMacStyle.WINDOW_BG, fg=RetroMacStyle.ACCENT).pack(anchor=tk.W, padx=10, pady=(5, 0))
-            tk.Label(rec_frame, text=recommendation['reasoning'], font=RetroMacStyle.FONT_SMALL,
-                     bg=RetroMacStyle.WINDOW_BG, wraplength=600).pack(anchor=tk.W, padx=10, pady=(0, 5))
+        self._make_label(
+            self.main_frame, "Your dinner options", font=FONT_HEADING
+        ).pack(anchor="w", pady=(0, 5))
 
-        # Scrollable recipe list
-        canvas = tk.Canvas(frame, bg=RetroMacStyle.WINDOW_BG, highlightthickness=0)
-        scrollbar = tk.Scrollbar(frame, orient=tk.VERTICAL, command=canvas.yview)
-        scrollable = tk.Frame(canvas, bg=RetroMacStyle.WINDOW_BG)
+        if recommendation.get("reasoning"):
+            self._make_label(
+                self.main_frame,
+                f"Recommended: Option {rec_index + 1} — {recommendation['reasoning']}",
+                font=FONT_SMALL, wraplength=650,
+            ).pack(anchor="w", pady=(0, 10))
 
-        scrollable.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.create_window((0, 0), window=scrollable, anchor=tk.NW, width=640)
+        # Scrollable area
+        canvas = tk.Canvas(self.main_frame, bg=BG_COLOR, highlightthickness=0)
+        scrollbar = tk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=canvas.yview)
+        scroll_frame = tk.Frame(canvas, bg=BG_COLOR)
+
+        scroll_frame.bind(
+            "<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
-
-        for i, recipe in enumerate(recipes):
-            self._create_recipe_card(scrollable, recipe, i, i == rec_index, results)
 
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # Navigation
-        nav_frame = tk.Frame(frame, bg=RetroMacStyle.WINDOW_BG)
-        nav_frame.pack(fill=tk.X, pady=10)
+        # Bind mousewheel
+        def _on_mousewheel(event):
+            canvas.yview_scroll(-1 * (event.delta // 120 or event.delta), "units")
 
-        self._make_button(nav_frame, "< Try Again", self._show_ingredients, width=12).pack(side=tk.LEFT)
-        self._make_button(nav_frame, "Home", self._show_welcome, width=10).pack(side=tk.RIGHT)
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        canvas.bind_all("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))
+        canvas.bind_all("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))
 
-    def _create_recipe_card(self, parent, recipe: Dict, index: int, is_rec: bool, results: Dict):
-        """Create recipe card"""
-        card = tk.LabelFrame(
-            parent,
-            text="",
-            bg=RetroMacStyle.WINDOW_BG,
-            relief=tk.GROOVE,
-            borderwidth=2
+        for i, recipe in enumerate(recipes):
+            is_rec = i == rec_index
+            border_color = "#336633" if is_rec else "#999999"
+
+            card = tk.Frame(
+                scroll_frame, bg="#EEEEEE", relief=tk.RIDGE, bd=2,
+                highlightbackground=border_color, highlightthickness=2 if is_rec else 0,
+            )
+            card.pack(fill=tk.X, pady=6, padx=4)
+
+            # Header
+            star = "★ " if is_rec else ""
+            header = f"{star}Option {i + 1}: {recipe['name']}"
+            tk.Label(
+                card, text=header, font=FONT_BOLD, bg="#EEEEEE", anchor="w"
+            ).pack(fill=tk.X, padx=8, pady=(6, 0))
+
+            # Meta line
+            meta = (
+                f"{recipe.get('cuisine', '')} · "
+                f"{recipe.get('difficulty', '')} · "
+                f"{recipe.get('active_time_minutes', '?')} min active / "
+                f"{recipe.get('total_time_minutes', '?')} min total"
+            )
+            tk.Label(
+                card, text=meta, font=FONT_SMALL, bg="#EEEEEE", anchor="w", fg="#555555"
+            ).pack(fill=tk.X, padx=8)
+
+            # Description
+            if recipe.get("description"):
+                tk.Label(
+                    card, text=recipe["description"], font=FONT_SMALL,
+                    bg="#EEEEEE", anchor="w", wraplength=600, justify=tk.LEFT,
+                ).pack(fill=tk.X, padx=8, pady=(4, 0))
+
+            # Ingredients preview
+            ings = recipe.get("ingredients", [])
+            if ings:
+                ing_text = "Ingredients: " + ", ".join(
+                    ing.rstrip("*") for ing in ings[:6]
+                )
+                if len(ings) > 6:
+                    ing_text += f"  ...and {len(ings) - 6} more"
+                tk.Label(
+                    card, text=ing_text, font=FONT_SMALL,
+                    bg="#EEEEEE", anchor="w", wraplength=600, justify=tk.LEFT,
+                ).pack(fill=tk.X, padx=8, pady=(4, 0))
+
+            # Action buttons
+            btn_row = tk.Frame(card, bg="#EEEEEE")
+            btn_row.pack(fill=tk.X, padx=8, pady=6)
+
+            tk.Button(
+                btn_row, text="View full recipe", font=FONT_SMALL,
+                bg=BTN_COLOR, relief=tk.RAISED, bd=2,
+                command=lambda r=recipe: self._show_full_recipe(r),
+            ).pack(side=tk.LEFT, padx=(0, 6))
+
+            tk.Button(
+                btn_row, text="Save to collection", font=FONT_SMALL,
+                bg=BTN_COLOR, relief=tk.RAISED, bd=2,
+                command=lambda r=recipe: self._save_recipe(r),
+            ).pack(side=tk.LEFT, padx=(0, 6))
+
+            tk.Button(
+                btn_row, text="Making this!", font=FONT_SMALL,
+                bg=BTN_COLOR, relief=tk.RAISED, bd=2,
+                command=lambda r=recipe: self._log_and_save(r),
+            ).pack(side=tk.LEFT)
+
+        # Bottom nav
+        bottom = tk.Frame(scroll_frame, bg=BG_COLOR)
+        bottom.pack(fill=tk.X, pady=(10, 0))
+
+        self._make_button(bottom, "Start over", self.show_welcome, width=12).pack(side=tk.LEFT)
+
+    def _show_full_recipe(self, recipe):
+        self._clear()
+
+        self._make_label(
+            self.main_frame, recipe["name"], font=FONT_TITLE
+        ).pack(anchor="w", pady=(0, 5))
+
+        meta = (
+            f"{recipe.get('cuisine', '')} · "
+            f"{recipe.get('difficulty', '')} · "
+            f"{recipe.get('total_time_minutes', '?')} min total"
         )
-        card.pack(fill=tk.X, pady=8, padx=5)
+        self._make_label(self.main_frame, meta, font=FONT_SMALL).pack(anchor="w", pady=(0, 10))
 
-        # Header
-        prefix = "* " if is_rec else f"{index + 1}. "
-        color = RetroMacStyle.ACCENT if is_rec else RetroMacStyle.LABEL_FG
+        # Scrollable body
+        canvas = tk.Canvas(self.main_frame, bg=BG_COLOR, highlightthickness=0)
+        scrollbar = tk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=canvas.yview)
+        body = tk.Frame(canvas, bg=BG_COLOR)
 
-        tk.Label(card, text=f"{prefix}{recipe['name']}", font=RetroMacStyle.FONT_BOLD,
-                 bg=RetroMacStyle.WINDOW_BG, fg=color).pack(anchor=tk.W, padx=10, pady=(10, 0))
+        body.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=body, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
 
-        meta = f"{recipe.get('cuisine', '?')} | {recipe.get('difficulty', '?')} | {recipe.get('active_time_minutes', '?')} min active"
-        tk.Label(card, text=meta, font=RetroMacStyle.FONT_SMALL,
-                 bg=RetroMacStyle.WINDOW_BG).pack(anchor=tk.W, padx=10)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        if recipe.get('description'):
-            tk.Label(card, text=recipe['description'], font=RetroMacStyle.FONT_MAIN,
-                     bg=RetroMacStyle.WINDOW_BG, wraplength=580).pack(anchor=tk.W, padx=10, pady=5)
+        def _on_mousewheel(event):
+            canvas.yview_scroll(-1 * (event.delta // 120 or event.delta), "units")
 
-        # Buttons
-        btn_frame = tk.Frame(card, bg=RetroMacStyle.WINDOW_BG)
-        btn_frame.pack(fill=tk.X, padx=10, pady=10)
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
-        self._make_button(btn_frame, "View Full", lambda r=recipe: self._show_full_recipe(r), width=10).pack(side=tk.LEFT, padx=2)
-        self._make_button(btn_frame, "Save", lambda r=recipe: self._save_recipe(r, False), width=8).pack(side=tk.LEFT, padx=2)
-        self._make_button(btn_frame, "Make Tonight!", lambda r=recipe: self._save_recipe(r, True), width=12).pack(side=tk.LEFT, padx=2)
+        # Ingredients
+        tk.Label(body, text="Ingredients", font=FONT_BOLD, bg=BG_COLOR, anchor="w").pack(
+            fill=tk.X, pady=(0, 4)
+        )
+        for ing in recipe.get("ingredients", []):
+            clean = ing.rstrip("*")
+            pantry = " (pantry)" if ing.endswith("*") else ""
+            tk.Label(
+                body, text=f"  • {clean}{pantry}", font=FONT_SMALL, bg=BG_COLOR, anchor="w"
+            ).pack(fill=tk.X)
 
-    def _show_full_recipe(self, recipe: Dict):
-        """Show full recipe popup"""
-        popup = tk.Toplevel(self.root)
-        popup.title(recipe['name'])
-        popup.geometry("600x700")
-        popup.configure(bg=RetroMacStyle.WINDOW_BG)
-        popup.transient(self.root)
-        popup.grab_set()
+        # Equipment
+        equipment = recipe.get("equipment", [])
+        if equipment:
+            tk.Label(body, text="Equipment", font=FONT_BOLD, bg=BG_COLOR, anchor="w").pack(
+                fill=tk.X, pady=(10, 4)
+            )
+            tk.Label(
+                body, text="  " + ", ".join(equipment), font=FONT_SMALL, bg=BG_COLOR, anchor="w"
+            ).pack(fill=tk.X)
 
-        frame = tk.Frame(popup, bg=RetroMacStyle.WINDOW_BG)
-        frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        # Instructions
+        tk.Label(body, text="Instructions", font=FONT_BOLD, bg=BG_COLOR, anchor="w").pack(
+            fill=tk.X, pady=(10, 4)
+        )
+        for j, step in enumerate(recipe.get("instructions", []), 1):
+            tk.Label(
+                body, text=f"  {j}. {step}", font=FONT_SMALL, bg=BG_COLOR,
+                anchor="w", wraplength=600, justify=tk.LEFT,
+            ).pack(fill=tk.X, pady=2)
 
-        tk.Label(frame, text=recipe['name'], font=RetroMacStyle.FONT_TITLE,
-                 bg=RetroMacStyle.WINDOW_BG).pack(anchor=tk.W)
-        tk.Label(frame, text=f"{recipe.get('cuisine', '')} | {recipe.get('difficulty', '')} | {recipe.get('total_time_minutes', '?')} min",
-                 font=RetroMacStyle.FONT_MAIN, bg=RetroMacStyle.WINDOW_BG).pack(anchor=tk.W, pady=(0, 15))
+        # Technique notes
+        if recipe.get("technique_notes"):
+            tk.Label(body, text="Technique notes", font=FONT_BOLD, bg=BG_COLOR, anchor="w").pack(
+                fill=tk.X, pady=(10, 4)
+            )
+            tk.Label(
+                body, text=recipe["technique_notes"], font=FONT_SMALL, bg=BG_COLOR,
+                anchor="w", wraplength=600, justify=tk.LEFT,
+            ).pack(fill=tk.X)
 
-        text = scrolledtext.ScrolledText(frame, font=RetroMacStyle.FONT_MONO,
-                                          bg=RetroMacStyle.TEXT_BG, wrap=tk.WORD, height=25)
-        text.pack(fill=tk.BOTH, expand=True)
+        # Bottom buttons
+        btn_row = tk.Frame(body, bg=BG_COLOR)
+        btn_row.pack(fill=tk.X, pady=(16, 0))
 
-        content = "INGREDIENTS\n" + "-" * 40 + "\n"
-        for ing in recipe.get('ingredients', []):
-            marker = " (pantry)" if ing.endswith('*') else ""
-            content += f"* {ing.rstrip('*')}{marker}\n"
+        self._make_button(btn_row, "← Back", lambda: self.show_results(self.result), width=10).pack(
+            side=tk.LEFT
+        )
+        self._make_button(
+            btn_row, "Save to collection", lambda: self._save_recipe(recipe), width=18
+        ).pack(side=tk.LEFT, padx=6)
+        self._make_button(
+            btn_row, "Making this!", lambda: self._log_and_save(recipe), width=14
+        ).pack(side=tk.LEFT)
 
-        content += f"\nEQUIPMENT: {', '.join(recipe.get('equipment', []))}\n"
-        content += "\n\nINSTRUCTIONS\n" + "-" * 40 + "\n"
-        for i, step in enumerate(recipe.get('instructions', []), 1):
-            content += f"\n{i}. {step}\n"
-
-        if recipe.get('technique_notes'):
-            content += f"\n\nTECHNIQUE NOTES\n" + "-" * 40 + f"\n{recipe['technique_notes']}"
-
-        text.insert(tk.END, content)
-        text.config(state=tk.DISABLED)
-
-        self._make_button(frame, "Close", popup.destroy, width=10).pack(pady=15)
-
-    def _save_recipe(self, recipe: Dict, make_tonight: bool):
-        """Save recipe"""
+    def _save_recipe(self, recipe):
         if self.history_manager.save_recipe(recipe):
-            if make_tonight:
-                self.history_manager.log_meal(recipe['name'], recipe.get('cuisine', 'Unknown'))
-                messagebox.showinfo("Saved & Logged!", f"'{recipe['name']}' saved and logged for tonight!\n\nEnjoy your meal!")
-            else:
-                messagebox.showinfo("Saved!", f"'{recipe['name']}' saved to your collection.")
+            messagebox.showinfo("Saved", f"'{recipe['name']}' saved to your collection.")
         else:
             messagebox.showerror("Error", "Failed to save recipe.")
 
-    def _show_history(self):
-        """Show history screen"""
-        self._clear_screen()
+    def _log_and_save(self, recipe):
+        self.history_manager.save_recipe(recipe)
+        cuisine = recipe.get("cuisine", "Unknown")
+        self.history_manager.log_meal(recipe["name"], cuisine)
+        messagebox.showinfo("Logged", f"'{recipe['name']}' saved and logged. Enjoy!")
 
-        frame = tk.Frame(self.container, bg=RetroMacStyle.WINDOW_BG)
-        frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+    # ── History screen ───────────────────────────────────────────────
 
-        tk.Label(frame, text="Recipe History", font=RetroMacStyle.FONT_TITLE,
-                 bg=RetroMacStyle.WINDOW_BG).pack(pady=(10, 20))
+    def show_history(self):
+        self._clear()
 
-        recipes = self.history_manager.get_recipe_history(limit=30)
+        self._make_label(
+            self.main_frame, "Saved recipes", font=FONT_HEADING
+        ).pack(anchor="w", pady=(0, 10))
+
+        recipes = self.history_manager.get_recipe_history(limit=25)
 
         if not recipes:
-            tk.Label(frame, text="No saved recipes yet.\nGenerate some recipes to get started!",
-                     font=RetroMacStyle.FONT_MAIN, bg=RetroMacStyle.WINDOW_BG).pack(pady=50)
+            self._make_label(
+                self.main_frame, "No saved recipes yet. Generate some first!", font=FONT
+            ).pack(anchor="w", pady=20)
         else:
-            list_frame = tk.Frame(frame, bg=RetroMacStyle.WINDOW_BG)
-            list_frame.pack(fill=tk.BOTH, expand=True)
+            canvas = tk.Canvas(self.main_frame, bg=BG_COLOR, highlightthickness=0)
+            scrollbar = tk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=canvas.yview)
+            list_frame = tk.Frame(canvas, bg=BG_COLOR)
 
-            scrollbar = tk.Scrollbar(list_frame)
-            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            list_frame.bind(
+                "<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+            )
+            canvas.create_window((0, 0), window=list_frame, anchor="nw")
+            canvas.configure(yscrollcommand=scrollbar.set)
 
-            self.history_listbox = tk.Listbox(list_frame, font=RetroMacStyle.FONT_MAIN,
-                                               bg=RetroMacStyle.TEXT_BG, height=15,
-                                               yscrollcommand=scrollbar.set)
-            self.history_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-            scrollbar.config(command=self.history_listbox.yview)
+            canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, pady=(0, 10))
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y, pady=(0, 10))
 
-            self.history_recipes = recipes
-            for r in recipes:
-                times = r.get('times_made', 0)
-                times_str = f" (x{times})" if times > 0 else ""
-                self.history_listbox.insert(tk.END, f"{r['name']} [{r.get('cuisine', '?')}]{times_str}")
+            def _on_mousewheel(event):
+                canvas.yview_scroll(-1 * (event.delta // 120 or event.delta), "units")
 
-            btn_frame = tk.Frame(frame, bg=RetroMacStyle.WINDOW_BG)
-            btn_frame.pack(fill=tk.X, pady=10)
-            self._make_button(btn_frame, "Mark as Made", self._mark_history_made, width=15).pack(side=tk.LEFT)
+            canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
-        nav_frame = tk.Frame(frame, bg=RetroMacStyle.WINDOW_BG)
-        nav_frame.pack(fill=tk.X, pady=10)
-        self._make_button(nav_frame, "< Back", self._show_welcome, width=10).pack(side=tk.LEFT)
+            for recipe in recipes:
+                row = tk.Frame(list_frame, bg="#EEEEEE", relief=tk.RIDGE, bd=1)
+                row.pack(fill=tk.X, pady=3, padx=4)
 
-    def _mark_history_made(self):
-        """Mark selected recipe as made"""
-        selection = self.history_listbox.curselection()
-        if not selection:
-            messagebox.showinfo("Select Recipe", "Please select a recipe first.")
-            return
-        recipe = self.history_recipes[selection[0]]
-        self.history_manager.log_meal(recipe['name'], recipe.get('cuisine', 'Unknown'))
-        messagebox.showinfo("Logged!", f"'{recipe['name']}' logged to recent meals.")
+                times = recipe.get("times_made", 0)
+                times_str = f" (made {times}x)" if times > 0 else ""
+                saved = recipe.get("saved_at", "")[:10]
 
-    def _show_recent(self):
-        """Show recent meals"""
-        self._clear_screen()
+                tk.Label(
+                    row,
+                    text=f"{recipe['name']}  —  {recipe.get('cuisine', '?')}{times_str}",
+                    font=FONT, bg="#EEEEEE", anchor="w",
+                ).pack(side=tk.LEFT, padx=8, pady=6)
 
-        frame = tk.Frame(self.container, bg=RetroMacStyle.WINDOW_BG)
-        frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+                tk.Label(
+                    row, text=saved, font=FONT_SMALL, bg="#EEEEEE", fg="#777777"
+                ).pack(side=tk.RIGHT, padx=8)
 
-        tk.Label(frame, text="Recent Meals (Last 14 Days)", font=RetroMacStyle.FONT_TITLE,
-                 bg=RetroMacStyle.WINDOW_BG).pack(pady=(10, 20))
+        # Nav
+        nav = tk.Frame(self.main_frame, bg=BG_COLOR)
+        nav.pack(fill=tk.X, side=tk.BOTTOM)
+
+        self._make_button(nav, "← Back", self.show_welcome, width=10).pack(side=tk.LEFT)
+
+    # ── Recent meals screen ──────────────────────────────────────────
+
+    def show_recent_meals(self):
+        self._clear()
+
+        self._make_label(
+            self.main_frame, "Recent meals (last 14 days)", font=FONT_HEADING
+        ).pack(anchor="w", pady=(0, 10))
 
         meals = self.history_manager.get_recent_meals()
 
         if not meals:
-            tk.Label(frame, text="No meals logged recently.\nMark recipes as 'Made Tonight' to track them here.",
-                     font=RetroMacStyle.FONT_MAIN, bg=RetroMacStyle.WINDOW_BG).pack(pady=50)
+            self._make_label(
+                self.main_frame, "No meals logged in the last 14 days.", font=FONT
+            ).pack(anchor="w", pady=20)
         else:
-            list_frame = tk.LabelFrame(frame, text=" Recent Meals ", font=RetroMacStyle.FONT_BOLD,
-                                        bg=RetroMacStyle.WINDOW_BG, relief=tk.GROOVE, borderwidth=2)
-            list_frame.pack(fill=tk.BOTH, expand=True, padx=10)
-
             for meal in reversed(meals):
-                row = tk.Frame(list_frame, bg=RetroMacStyle.WINDOW_BG)
-                row.pack(fill=tk.X, padx=10, pady=3)
-                tk.Label(row, text=meal.get('date', '')[:10], font=RetroMacStyle.FONT_BOLD,
-                         bg=RetroMacStyle.WINDOW_BG, width=12, anchor=tk.W).pack(side=tk.LEFT)
-                tk.Label(row, text=meal.get('recipe_name', '?'), font=RetroMacStyle.FONT_MAIN,
-                         bg=RetroMacStyle.WINDOW_BG).pack(side=tk.LEFT)
-                tk.Label(row, text=f"  [{meal.get('cuisine_type', '?')}]", font=RetroMacStyle.FONT_SMALL,
-                         bg=RetroMacStyle.WINDOW_BG, fg=RetroMacStyle.BORDER).pack(side=tk.LEFT)
+                row = tk.Frame(self.main_frame, bg="#EEEEEE", relief=tk.RIDGE, bd=1)
+                row.pack(fill=tk.X, pady=3)
 
-            cuisines = list(set(m.get('cuisine_type', '?') for m in meals))
-            tk.Label(frame, text=f"\nCuisines to avoid for variety: {', '.join(cuisines)}",
-                     font=RetroMacStyle.FONT_SMALL, bg=RetroMacStyle.WINDOW_BG).pack(pady=10)
+                date_str = meal.get("date", "")[:10]
+                tk.Label(
+                    row, text=date_str, font=FONT_SMALL, bg="#EEEEEE", fg="#555555", width=12
+                ).pack(side=tk.LEFT, padx=(8, 4), pady=6)
 
-        nav_frame = tk.Frame(frame, bg=RetroMacStyle.WINDOW_BG)
-        nav_frame.pack(fill=tk.X, pady=10)
-        self._make_button(nav_frame, "< Back", self._show_welcome, width=10).pack(side=tk.LEFT)
+                tk.Label(
+                    row,
+                    text=f"{meal.get('recipe_name', '?')}  ({meal.get('cuisine_type', '?')})",
+                    font=FONT, bg="#EEEEEE", anchor="w",
+                ).pack(side=tk.LEFT, padx=4, pady=6)
 
-    def _make_button(self, parent, text: str, command, width: int = 12) -> tk.Button:
-        """Create styled button"""
-        btn = tk.Button(
-            parent,
-            text=text,
-            command=command,
-            font=RetroMacStyle.FONT_MAIN,
-            bg=RetroMacStyle.BUTTON_BG,
-            activebackground=RetroMacStyle.BUTTON_ACTIVE,
-            relief=tk.RAISED,
-            borderwidth=2,
-            width=width,
-            cursor="hand2"
-        )
-        return btn
+            # Cuisine summary
+            cuisines = list(set(m.get("cuisine_type", "?") for m in meals))
+            self._make_label(
+                self.main_frame,
+                f"Cuisines to avoid for variety: {', '.join(cuisines)}",
+                font=FONT_SMALL,
+            ).pack(anchor="w", pady=(10, 0))
 
-    def run(self):
-        """Start app"""
-        self.root.mainloop()
+        # Nav
+        nav = tk.Frame(self.main_frame, bg=BG_COLOR)
+        nav.pack(fill=tk.X, side=tk.BOTTOM, pady=(10, 0))
+
+        self._make_button(nav, "← Back", self.show_welcome, width=10).pack(side=tk.LEFT)
 
 
 def main():
-    """Entry point"""
-    app = DinnerAssistantApp()
-    app.run()
+    root = tk.Tk()
+    DinnerAssistantApp(root)
+    root.mainloop()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
