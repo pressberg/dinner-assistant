@@ -4,13 +4,27 @@ from anthropic import Anthropic
 from typing import List, Dict, Optional
 import json
 import re
-from .config import ANTHROPIC_API_KEY, MODEL_NAME, PREFERENCES_FILE
+from .config import ANTHROPIC_API_KEY, MODEL_NAME, PREFERENCES_FILE, USER_DATA_DIR
+
+
+def load_allergies() -> list:
+    """Load allergy list from user config. Returns empty list if none."""
+    config_file = USER_DATA_DIR / "config.json"
+    if not config_file.exists():
+        return []
+    try:
+        with open(config_file, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        return config.get("allergies", {}).get("items", [])
+    except (json.JSONDecodeError, OSError):
+        return []
 
 
 class RecipeGenerator:
     def __init__(self):
         self.client = Anthropic(api_key=ANTHROPIC_API_KEY)
         self.preferences = self._load_preferences()
+        self.allergies = load_allergies()
 
     def _load_preferences(self) -> str:
         """Load preferences.md content"""
@@ -69,7 +83,20 @@ class RecipeGenerator:
 
         prompt = f"""You are a personal chef assistant for Matt and Jennifer Pressberg. Generate exactly 3 dinner recipe options based on the available ingredients and their detailed preferences below.
 
-## AVAILABLE INGREDIENTS
+"""
+
+        # Allergy section goes first — highest priority
+        if self.allergies:
+            allergy_lines = "\n".join(f"- {item}" for item in self.allergies)
+            prompt += f"""## CRITICAL SAFETY - ALLERGIES
+The user has confirmed allergies. NEVER suggest recipes containing:
+{allergy_lines}
+
+This is a safety requirement, not a preference. Do not include these ingredients under any circumstances.
+
+"""
+
+        prompt += f"""## AVAILABLE INGREDIENTS
 {', '.join(ingredients)}
 
 Note: Interpret ingredient inputs generously (e.g., "turkey" means ground turkey is acceptable, "greens" could mean spinach/kale/chard). The pantry staples listed in preferences are ALWAYS available—do not ask for them.

@@ -100,6 +100,84 @@ def collect_api_key() -> str:
         return key
 
 
+COMMON_ALLERGIES = [
+    ("Tree nuts", "almonds, walnuts, pecans, etc."),
+    ("Peanuts", ""),
+    ("Shellfish", "shrimp, crab, lobster"),
+    ("Fish", ""),
+    ("Dairy/Lactose", ""),
+    ("Eggs", ""),
+    ("Gluten/Wheat", ""),
+    ("Soy", ""),
+]
+
+
+def collect_allergies() -> dict:
+    """Prompt user for food allergies. Returns dict with allergy info."""
+    console.print(
+        "\n[yellow]Before we get to the fun stuff, let's talk safety.[/yellow]\n"
+        "Do you have any food allergies or ingredients you must [bold red]NEVER[/bold red] eat?"
+    )
+
+    # Show numbered options
+    console.print()
+    for i, (name, examples) in enumerate(COMMON_ALLERGIES, 1):
+        label = f"  {i}. {name}"
+        if examples:
+            label += f" [dim]({examples})[/dim]"
+        console.print(label)
+    console.print(f"  {len(COMMON_ALLERGIES) + 1}. [dim]None of these[/dim]")
+
+    # Multi-select
+    console.print(
+        "\n[dim]Enter numbers separated by commas (e.g. 1,3), "
+        f"or {len(COMMON_ALLERGIES) + 1} for none.[/dim]"
+    )
+    selection = Prompt.ask("[yellow]Your selections[/yellow]")
+
+    items = []
+    none_option = str(len(COMMON_ALLERGIES) + 1)
+
+    for num in selection.split(","):
+        num = num.strip()
+        if num == none_option:
+            items = []
+            break
+        try:
+            idx = int(num) - 1
+            if 0 <= idx < len(COMMON_ALLERGIES):
+                items.append(COMMON_ALLERGIES[idx][0].lower())
+        except ValueError:
+            continue
+
+    # Free text for additional allergies
+    console.print()
+    extra = Prompt.ask(
+        "[yellow]Any other allergies or ingredients to always avoid?[/yellow]",
+        default="",
+    ).strip()
+
+    if extra:
+        for item in extra.split(","):
+            item = item.strip().lower()
+            if item and item not in items:
+                items.append(item)
+
+    return {"items": items}
+
+
+def confirm_allergies(allergies: list) -> bool:
+    """Show allergy list and get confirmation. Returns True if confirmed."""
+    if not allergies:
+        return True
+
+    console.print("\n[bold yellow]I'll NEVER suggest recipes containing:[/bold yellow]")
+    for item in allergies:
+        console.print(f"  [red]- {item}[/red]")
+
+    return Confirm.ask("\n[yellow]Is this correct?[/yellow]", default=True)
+
+
 def run_onboarding() -> bool:
     """Main onboarding flow. Returns True if successful."""
     USER_DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -110,12 +188,24 @@ def run_onboarding() -> bool:
     # Collect API key
     api_key = collect_api_key()
 
-    # Save initial config
+    # Collect allergies (loop until confirmed)
+    while True:
+        allergy_info = collect_allergies()
+        if confirm_allergies(allergy_info["items"]):
+            break
+
+    # Save config
     config = load_user_config()
+    now = datetime.now(timezone.utc).isoformat()
     config.update(
         {
             "user_name": name,
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "allergies": {
+                "items": allergy_info["items"],
+                "confirmed": True,
+                "confirmed_at": now,
+            },
+            "created_at": config.get("created_at", now),
             "onboarding_complete": False,
         }
     )
