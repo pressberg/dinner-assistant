@@ -5,6 +5,12 @@
 
 ## Recent changes
 
+### Session: 2026-02-23 - Interview endpoint error logging
+- Added `import traceback` to `src/web.py`
+- Wrapped entire `onboarding_interview_message()` route in a single `try/except` with `traceback.print_exc()`
+- Removed inner `try/except` blocks around API calls so exceptions bubble up to the outer handler with full stack traces
+- Errors now return the exception message in the JSON response with a 500 status
+
 ### Session: 2026-02-23 - Flask web interface
 - New `src/web.py` provides a browser-based UI at http://localhost:5000
 - `run_web.py` launcher in project root

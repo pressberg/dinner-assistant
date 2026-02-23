@@ -4,6 +4,7 @@ Flask web interface for Pressberg Kitchen Recipe Assistant
 
 import json
 import secrets
+import traceback
 from datetime import datetime, timezone
 
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
@@ -354,23 +355,23 @@ def onboarding_interview():
 @app.route("/onboarding/interview/message", methods=["POST"])
 def onboarding_interview_message():
     """AJAX endpoint for interview chat."""
-    data = request.get_json()
-    user_message = data.get("message", "").strip() if data else ""
-
-    messages = session.get("interview_messages", [])
-
-    # Add user message if provided (not for first turn)
-    if user_message:
-        messages.append({"role": "user", "content": user_message})
-
-    # Get API key
     try:
-        api_key = session.get("onboarding_api_key") or get_api_key()
-    except ValueError:
-        return jsonify({"error": "No API key configured"}), 400
+        data = request.get_json()
+        user_message = data.get("message", "").strip() if data else ""
 
-    # Call Claude
-    try:
+        messages = session.get("interview_messages", [])
+
+        # Add user message if provided (not for first turn)
+        if user_message:
+            messages.append({"role": "user", "content": user_message})
+
+        # Get API key
+        try:
+            api_key = session.get("onboarding_api_key") or get_api_key()
+        except ValueError:
+            return jsonify({"error": "No API key configured"}), 400
+
+        # Call Claude
         from anthropic import Anthropic
         client = Anthropic(api_key=api_key)
         response = client.messages.create(
@@ -380,27 +381,24 @@ def onboarding_interview_message():
             messages=messages,
         )
         assistant_text = response.content[0].text
-    except Exception:
-        return jsonify({"error": "API error. Please try again."}), 500
 
-    if "INTERVIEW_COMPLETE" in assistant_text:
-        # Extract data and store
-        interview_data = _extract_interview_json(assistant_text)
-        config = load_user_config()
-        config["interview_data"] = interview_data
-        save_user_config(config)
+        if "INTERVIEW_COMPLETE" in assistant_text:
+            # Extract data and store
+            interview_data = _extract_interview_json(assistant_text)
+            config = load_user_config()
+            config["interview_data"] = interview_data
+            save_user_config(config)
 
-        visible = assistant_text.split("INTERVIEW_COMPLETE")[0].strip()
-        session["interview_messages"] = messages
-        return jsonify({"message": visible or "Got it, thanks!", "complete": True})
+            visible = assistant_text.split("INTERVIEW_COMPLETE")[0].strip()
+            session["interview_messages"] = messages
+            return jsonify({"message": visible or "Got it, thanks!", "complete": True})
 
-    # Check if we've hit max turns
-    turn_count = len([m for m in messages if m["role"] == "user"])
-    if turn_count >= MAX_INTERVIEW_TURNS:
-        # Force wrap-up
-        messages.append({"role": "assistant", "content": assistant_text})
-        messages.append({"role": "user", "content": "Please summarize what you've learned so far."})
-        try:
+        # Check if we've hit max turns
+        turn_count = len([m for m in messages if m["role"] == "user"])
+        if turn_count >= MAX_INTERVIEW_TURNS:
+            # Force wrap-up
+            messages.append({"role": "assistant", "content": assistant_text})
+            messages.append({"role": "user", "content": "Please summarize what you've learned so far."})
             response = client.messages.create(
                 model=MODEL_NAME,
                 max_tokens=800,
@@ -410,20 +408,22 @@ def onboarding_interview_message():
             )
             final_text = response.content[0].text
             interview_data = _extract_interview_json(final_text)
-        except Exception:
-            interview_data = {}
 
-        config = load_user_config()
-        config["interview_data"] = interview_data
-        save_user_config(config)
+            config = load_user_config()
+            config["interview_data"] = interview_data
+            save_user_config(config)
 
+            session["interview_messages"] = messages
+            return jsonify({"message": "Thanks for all that info!", "complete": True})
+
+        # Normal turn — save and return
+        messages.append({"role": "assistant", "content": assistant_text})
         session["interview_messages"] = messages
-        return jsonify({"message": "Thanks for all that info!", "complete": True})
+        return jsonify({"message": assistant_text, "complete": False})
 
-    # Normal turn — save and return
-    messages.append({"role": "assistant", "content": assistant_text})
-    session["interview_messages"] = messages
-    return jsonify({"message": assistant_text, "complete": False})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/onboarding/review")
