@@ -5,9 +5,6 @@ import shutil
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
-
 # Project paths
 PROJECT_ROOT = Path(__file__).parent.parent
 PREFERENCES_FILE = PROJECT_ROOT / "preferences.md"
@@ -29,13 +26,52 @@ for _filename in ("recipe_history.json", "recent_meals.json"):
         shutil.copy2(_old_file, _new_file)
         print(f"Migrated {_filename} to ~/.dinner-assistant/")
 
-# API Configuration
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-if not ANTHROPIC_API_KEY:
+
+def get_api_key() -> str:
+    """
+    Get Anthropic API key, checking multiple sources.
+
+    Priority:
+    1. ~/.dinner-assistant/.env (set during onboarding)
+    2. Project .env (backward compatibility)
+    3. ANTHROPIC_API_KEY environment variable
+
+    Raises ValueError if no key found.
+    """
+    # Check user data dir .env first (onboarding writes here)
+    user_env = USER_DATA_DIR / ".env"
+    if user_env.exists():
+        load_dotenv(user_env)
+        key = os.getenv("ANTHROPIC_API_KEY")
+        if key:
+            return key
+
+    # Fall back to project .env
+    load_dotenv(PROJECT_ROOT / ".env")
+    key = os.getenv("ANTHROPIC_API_KEY")
+    if key:
+        return key
+
     raise ValueError(
-        "ANTHROPIC_API_KEY not found. "
-        "Create a .env file with your API key or set the environment variable."
+        "ANTHROPIC_API_KEY not found. Run the app to complete onboarding, "
+        "or set the environment variable."
     )
+
+
+# API Configuration — lazy so the module can import before onboarding
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+
+# Try loading from user .env if not already set
+if not ANTHROPIC_API_KEY:
+    _user_env = USER_DATA_DIR / ".env"
+    if _user_env.exists():
+        load_dotenv(_user_env)
+        ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+
+# Fall back to project .env
+if not ANTHROPIC_API_KEY:
+    load_dotenv(PROJECT_ROOT / ".env")
+    ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 # Model configuration
 MODEL_NAME = "claude-sonnet-4-20250514"

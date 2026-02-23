@@ -28,6 +28,11 @@ def main(history: bool, recent: bool, made: bool, favorites: bool, search: str):
     Generate personalized dinner recipes based on available ingredients.
     """
 
+    from .onboarding import is_onboarding_complete, run_onboarding
+
+    if not is_onboarding_complete():
+        run_onboarding()
+
     history_manager = HistoryManager()
 
     if history:
