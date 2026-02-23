@@ -5,6 +5,7 @@ Collects name, API key, and allergies, then runs preference interview.
 
 import json
 import re
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -444,9 +445,64 @@ def save_preferences(preferences_md: str):
         f.write(preferences_md)
 
 
+def backup_preferences():
+    """Back up existing preferences.md if it exists."""
+    if USER_PREFERENCES_FILE.exists():
+        backup = USER_PREFERENCES_FILE.with_suffix(".md.backup")
+        shutil.copy2(USER_PREFERENCES_FILE, backup)
+        console.print("[dim]Backed up existing preferences.[/dim]")
+
+
+def run_preferences_update(api_key: str, user_name: str):
+    """Re-run allergies + interview + preferences without touching name/API key."""
+    config = load_user_config()
+
+    # Collect allergies
+    while True:
+        allergy_info = collect_allergies()
+        if confirm_allergies(allergy_info["items"]):
+            break
+
+    now = datetime.now(timezone.utc).isoformat()
+    config["allergies"] = {
+        "items": allergy_info["items"],
+        "confirmed": True,
+        "confirmed_at": now,
+    }
+    save_user_config(config)
+
+    # Interview + preferences generation
+    while True:
+        interview_data = run_interview(api_key, user_name)
+        config["interview_data"] = interview_data
+        save_user_config(config)
+
+        console.print("\n[dim]Generating your preference profile...[/dim]")
+        try:
+            preferences_md = generate_preferences_md(api_key, config)
+        except Exception:
+            console.print("[red]Failed to generate preferences. Retrying...[/red]")
+            continue
+
+        result = show_preferences_summary(preferences_md)
+        if result == "yes":
+            save_preferences(preferences_md)
+            break
+
+    # Clean up
+    config.pop("interview_data", None)
+    config["preferences_updated_at"] = datetime.now(timezone.utc).isoformat()
+    save_user_config(config)
+
+    console.print(f"\n[green]Preferences updated, {user_name}![/green]\n")
+
+
 def run_onboarding() -> bool:
     """Main onboarding flow. Returns True if successful."""
     USER_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Back up existing preferences if re-running setup
+    backup_preferences()
 
     # Collect name
     name = collect_name()

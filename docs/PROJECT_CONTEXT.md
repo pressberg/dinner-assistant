@@ -5,6 +5,13 @@
 
 ## Recent changes
 
+### Session: 2026-02-23 - Update preferences option
+- New CLI flags: `--setup` (re-run full onboarding) and `--update-preferences` (allergies + interview + prefs only)
+- Both back up existing `preferences.md` to `preferences.md.backup` before overwriting
+- `--update-preferences` skips name and API key collection, keeps existing config
+- `backup_preferences()` and `run_preferences_update()` added to `onboarding.py`
+- Recipe history and recent meals are preserved during re-setup
+
 ### Session: 2026-02-23 - AI interview and preferences generation
 - `run_interview()` conducts 8-12 turn conversation with Claude to learn cooking preferences
   - Covers: cuisines, spice tolerance, proteins, skill level, time constraints, equipment, household size, dietary goals

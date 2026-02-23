@@ -21,15 +21,39 @@ console = Console()
 @click.option('--made', is_flag=True, help='Mark a saved recipe as made')
 @click.option('--favorites', is_flag=True, help='View frequently-made recipes')
 @click.option('--search', help='Search saved recipes by name')
-def main(history: bool, recent: bool, made: bool, favorites: bool, search: str):
+@click.option('--setup', is_flag=True, help='Re-run full setup (name, API key, preferences)')
+@click.option('--update-preferences', is_flag=True, help='Update allergies and preferences only')
+def main(history: bool, recent: bool, made: bool, favorites: bool, search: str,
+         setup: bool, update_preferences: bool):
     """
     Pressberg Kitchen Recipe Assistant
 
     Generate personalized dinner recipes based on available ingredients.
     """
 
-    from .onboarding import is_onboarding_complete, run_onboarding
+    from .onboarding import (
+        backup_preferences, is_onboarding_complete, load_user_config,
+        run_onboarding, run_preferences_update,
+    )
 
+    # Handle --setup (re-run full onboarding)
+    if setup:
+        backup_preferences()
+        run_onboarding()
+        return
+
+    # Handle --update-preferences (allergies + interview + prefs only)
+    if update_preferences:
+        from .config import get_api_key
+        config = load_user_config()
+        if not config.get("user_name"):
+            console.print("[red]No existing setup found. Run --setup first.[/red]")
+            return
+        backup_preferences()
+        run_preferences_update(get_api_key(), config["user_name"])
+        return
+
+    # Normal onboarding check for new users
     if not is_onboarding_complete():
         run_onboarding()
 
