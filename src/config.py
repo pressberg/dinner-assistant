@@ -1,6 +1,7 @@
 """Configuration management for Pressberg Kitchen Recipe Assistant"""
 
 import os
+import shutil
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -9,11 +10,24 @@ load_dotenv()
 
 # Project paths
 PROJECT_ROOT = Path(__file__).parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
 PREFERENCES_FILE = PROJECT_ROOT / "preferences.md"
 
-# Ensure data directory exists
+# User data lives in ~/.dinner-assistant/ (separate from app code)
+USER_DATA_DIR = Path.home() / ".dinner-assistant"
+DATA_DIR = USER_DATA_DIR / "data"
+
+# Create user data directories if they don't exist
+USER_DATA_DIR.mkdir(exist_ok=True)
 DATA_DIR.mkdir(exist_ok=True)
+
+# Migrate old data from project ./data/ to ~/.dinner-assistant/data/
+_OLD_DATA_DIR = PROJECT_ROOT / "data"
+for _filename in ("recipe_history.json", "recent_meals.json"):
+    _old_file = _OLD_DATA_DIR / _filename
+    _new_file = DATA_DIR / _filename
+    if _old_file.exists() and not _new_file.exists():
+        shutil.copy2(_old_file, _new_file)
+        print(f"Migrated {_filename} to ~/.dinner-assistant/")
 
 # API Configuration
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")

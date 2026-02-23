@@ -11,9 +11,8 @@ ENV/
 # Environment variables
 .env
 
-# Data files (remove these lines if you want to sync history via git)
-data/recipe_history.json
-data/recent_meals.json
+# User data now lives in ~/.dinner-assistant/ (not in the project directory)
+data/*.json
 
 # IDE
 .vscode/

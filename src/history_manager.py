@@ -23,7 +23,7 @@ class HistoryManager:
     def _load_json(self, filepath: Path) -> dict:
         """Load JSON from file with error handling"""
         try:
-            with open(filepath, 'r') as f:
+            with open(filepath, 'r', encoding="utf-8") as f:
                 return json.load(f)
         except json.JSONDecodeError:
             # Corrupted file—reset it
@@ -33,7 +33,7 @@ class HistoryManager:
 
     def _save_json(self, filepath: Path, data: dict):
         """Save JSON to file"""
-        with open(filepath, 'w') as f:
+        with open(filepath, 'w', encoding="utf-8") as f:
             json.dump(data, f, indent=2)
 
     def save_recipe(self, recipe: Dict) -> bool:
