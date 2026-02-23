@@ -15,11 +15,11 @@ class RecipeGenerator:
     def _load_preferences(self) -> str:
         """Load preferences.md content"""
         try:
-            with open(PREFERENCES_FILE, 'r') as f:
+            with open(PREFERENCES_FILE, 'r', encoding="utf-8") as f:
                 return f.read()
         except FileNotFoundError:
             raise FileNotFoundError(
-                f"preferences.md not found at {PREFERENCES_FILE}. "
+                "preferences.md not found. "
                 "Please ensure it exists in the project root."
             )
 
@@ -182,8 +182,8 @@ Respond with ONLY valid JSON. No markdown code blocks, no commentary, no explana
         except (ValueError, json.JSONDecodeError):
             pass
 
-        # If all else fails, raise with context
+        # If all else fails, raise without leaking API response content
         raise ValueError(
-            f"Could not parse JSON from response. "
-            f"First 500 chars: {response_text[:500]}"
+            "Could not parse recipe data from the API response. "
+            "Try running again."
         )

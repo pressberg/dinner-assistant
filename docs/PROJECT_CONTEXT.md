@@ -35,6 +35,6 @@
 - Migration: on startup, old `./data/*.json` files are copied to the new location if they don't already exist there
 
 ## Known issues (from Silvio review)
-- Error messages could leak API response internals (medium)
+- ~~Error messages could leak API response internals (medium)~~ Fixed 2026-02-23
 - ~~`history_manager.py` missing `encoding="utf-8"` on file ops (medium)~~ Fixed 2026-02-23
 - No input length validation on custom constraint/ingredient fields (low)
