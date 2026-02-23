@@ -5,6 +5,11 @@
 
 ## Recent changes
 
+### Session: 2026-02-23 - Fix interview initial message
+- Fixed "messages: at least one message is required" error in `/onboarding/interview/message`
+- When the interview starts (empty messages list, no user input), the endpoint now seeds the conversation with an initial user message so Claude has something to respond to
+- Without this, the first AJAX call sent an empty messages array to the Anthropic API, which rejected it
+
 ### Session: 2026-02-23 - Interview endpoint error logging
 - Added `import traceback` to `src/web.py`
 - Wrapped entire `onboarding_interview_message()` route in a single `try/except` with `traceback.print_exc()`

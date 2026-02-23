@@ -361,8 +361,10 @@ def onboarding_interview_message():
 
         messages = session.get("interview_messages", [])
 
-        # Add user message if provided (not for first turn)
-        if user_message:
+        # Seed the conversation on first call so Claude has a message to respond to
+        if not messages and not user_message:
+            messages = [{"role": "user", "content": "Hi, I'm ready to set up my cooking preferences. Please start the interview."}]
+        elif user_message:
             messages.append({"role": "user", "content": user_message})
 
         # Get API key
