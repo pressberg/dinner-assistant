@@ -73,6 +73,15 @@ if not ANTHROPIC_API_KEY:
     load_dotenv(PROJECT_ROOT / ".env")
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
+# Preferences — user-generated lives in ~/.dinner-assistant/, project file is fallback
+USER_PREFERENCES_FILE = USER_DATA_DIR / "preferences.md"
+
+
+def has_user_preferences() -> bool:
+    """Check if a user-generated preferences.md exists."""
+    return USER_PREFERENCES_FILE.exists()
+
+
 # Model configuration
 MODEL_NAME = "claude-sonnet-4-20250514"
 

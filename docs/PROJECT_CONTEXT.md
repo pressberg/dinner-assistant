@@ -5,6 +5,20 @@
 
 ## Recent changes
 
+### Session: 2026-02-23 - AI interview and preferences generation
+- `run_interview()` conducts 8-12 turn conversation with Claude to learn cooking preferences
+  - Covers: cuisines, spice tolerance, proteins, skill level, time constraints, equipment, household size, dietary goals
+  - System prompt enforces one-question-at-a-time, conversational style
+  - Capped at 12 exchanges; forces wrap-up if Claude doesn't finish naturally
+  - Single retry on API errors, returns empty dict as fallback
+- `generate_preferences_md()` sends interview data + allergies to Claude to produce a full preferences.md
+- `show_preferences_summary()` previews the generated file; user can accept, view full text, or redo the interview
+- `save_preferences()` writes to `~/.dinner-assistant/preferences.md`
+- `recipe_generator.py` now checks `~/.dinner-assistant/preferences.md` first, falls back to project `preferences.md` for existing users
+- `config.py` adds `USER_PREFERENCES_FILE` and `has_user_preferences()` helper
+- On completion: `interview_data` is removed from config.json, `onboarding_complete` set to True
+- Updated config.json schema now includes `onboarding_completed_at` timestamp
+
 ### Session: 2026-02-23 - Onboarding flow (name, API key, allergies)
 - New `src/onboarding.py` handles first-time user setup
   - `is_onboarding_complete()` checks config.json for completion flag
@@ -48,7 +62,7 @@
   - Uses existing `RecipeGenerator` and `HistoryManager`
 
 ## Architecture
-- `src/onboarding.py` - First-time user setup (name, API key, allergies)
+- `src/onboarding.py` - First-time user setup (name, API key, allergies, AI interview, preferences generation)
 - `src/recipe_generator.py` - Claude API integration for recipe generation
 - `src/history_manager.py` - JSON-based recipe history and meal logging
 - `src/config.py` - Configuration, paths, preferences and API key resolution
@@ -60,7 +74,7 @@
 - User config: `~/.dinner-assistant/config.json` (name, allergies, onboarding state)
 - API key: `~/.dinner-assistant/.env` (written during onboarding)
 - User data: `~/.dinner-assistant/data/` (recipe_history.json, recent_meals.json)
-- Preferences: `preferences.md` in project root (will move to ~/.dinner-assistant/ later)
+- Preferences: `~/.dinner-assistant/preferences.md` (generated during onboarding); falls back to project `preferences.md` for existing users
 - Migration: on startup, old `./data/*.json` files are copied to the new location if they don't already exist there
 
 ## Known issues (from Silvio review)

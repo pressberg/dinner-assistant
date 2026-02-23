@@ -319,6 +319,131 @@ def run_interview(api_key: str, user_name: str) -> dict:
         return {}
 
 
+PREFERENCES_SYSTEM_PROMPT = """\
+Based on the interview data and allergy information below, generate a preferences.md file \
+for a recipe assistant. This file will be injected into every recipe generation prompt, so \
+make it specific and actionable.
+
+Follow this exact structure:
+
+# [User Name]'s Kitchen - Recipe Preferences
+
+## Household
+- Users, default servings, leftover philosophy
+
+## CRITICAL - Allergies & Restrictions
+[If allergies exist, list them prominently with a warning that these must NEVER appear in recipes. \
+If no allergies, note "No confirmed allergies."]
+
+## Cuisine preferences
+### Tier 1 (weekly rotation)
+### Tier 2 (regular rotation)
+### Tier 3 (occasional)
+### Avoid
+
+## Flavor profile
+### Strong preferences
+### Spice tolerance
+### Hard restrictions (non-allergy)
+
+## Proteins
+### Regular rotation
+### Want more of
+### Avoid
+
+## Equipment
+### Primary (use frequently)
+### Available (situational)
+### Philosophy
+
+## Pantry staples
+[Make reasonable assumptions based on their cuisine preferences — oils, sauces, spices, etc.]
+
+## Time constraints
+### Weeknight default
+### Weekend
+
+## Output preferences
+- Default to [household_size] servings
+- Include active time and total time
+- Mark pantry staples with asterisk (*) in ingredient lists
+- Include technique tips for proteins
+
+Write in a direct, practical style. Use the interview data to fill in real preferences. \
+Do not use generic placeholders. Output ONLY the markdown, no preamble or explanation.
+"""
+
+USER_PREFERENCES_FILE = USER_DATA_DIR / "preferences.md"
+
+
+def generate_preferences_md(api_key: str, config: dict) -> str:
+    """Generate a preferences.md file from interview data and allergies."""
+    from anthropic import Anthropic
+
+    client = Anthropic(api_key=api_key)
+
+    user_data = json.dumps(
+        {
+            "user_name": config.get("user_name", "User"),
+            "allergies": config.get("allergies", {}).get("items", []),
+            "interview": config.get("interview_data", {}),
+        },
+        indent=2,
+    )
+
+    response = client.messages.create(
+        model=MODEL_NAME,
+        max_tokens=3000,
+        system=PREFERENCES_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": f"Here is the user data:\n\n{user_data}"}],
+    )
+
+    return response.content[0].text.strip()
+
+
+def show_preferences_summary(preferences_md: str) -> str:
+    """
+    Show a summary of generated preferences and ask user to confirm.
+
+    Returns: "yes", "edit", or "redo"
+    """
+    console.print("\n[bold cyan]Here's what I learned about your kitchen:[/bold cyan]\n")
+
+    # Extract and display key sections (show first ~40 lines as a preview)
+    lines = preferences_md.split("\n")
+    preview = "\n".join(lines[:40])
+    if len(lines) > 40:
+        preview += f"\n[dim]...and {len(lines) - 40} more lines[/dim]"
+    console.print(preview)
+
+    console.print(
+        "\n[yellow]Does this look right?[/yellow]\n"
+        "  1. [green]Yes, save it[/green]\n"
+        "  2. [yellow]Show full text so I can review[/yellow]\n"
+        "  3. [red]Redo the interview[/red]"
+    )
+    choice = Prompt.ask("Your choice", choices=["1", "2", "3"], default="1")
+
+    if choice == "1":
+        return "yes"
+    elif choice == "2":
+        console.print(f"\n{'─' * 60}")
+        console.print(preferences_md)
+        console.print(f"{'─' * 60}\n")
+        if Confirm.ask("[yellow]Save this?[/yellow]", default=True):
+            return "yes"
+        return "redo"
+    else:
+        return "redo"
+
+
+def save_preferences(preferences_md: str):
+    """Save preferences.md to the user data directory."""
+    USER_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with open(USER_PREFERENCES_FILE, "w", encoding="utf-8") as f:
+        f.write(preferences_md)
+
+
 def run_onboarding() -> bool:
     """Main onboarding flow. Returns True if successful."""
     USER_DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -352,10 +477,32 @@ def run_onboarding() -> bool:
     )
     save_user_config(config)
 
-    # Run preference interview
-    interview_data = run_interview(api_key, name)
-    config["interview_data"] = interview_data
+    # Run preference interview and generate preferences.md
+    while True:
+        interview_data = run_interview(api_key, name)
+        config["interview_data"] = interview_data
+        save_user_config(config)
+
+        console.print("\n[dim]Generating your preference profile...[/dim]")
+        try:
+            preferences_md = generate_preferences_md(api_key, config)
+        except Exception:
+            console.print("[red]Failed to generate preferences. Retrying...[/red]")
+            continue
+
+        result = show_preferences_summary(preferences_md)
+        if result == "yes":
+            save_preferences(preferences_md)
+            break
+        # "redo" loops back to interview
+
+    # Clean up interview data and mark complete
+    config.pop("interview_data", None)
+    config["onboarding_complete"] = True
+    config["onboarding_completed_at"] = datetime.now(timezone.utc).isoformat()
     save_user_config(config)
 
-    console.print(f"\n[green]All set, {name}. Let's cook.[/green]\n")
+    console.print(
+        f"\n[green]Setup complete, {name}! You're ready to generate recipes.[/green]\n"
+    )
     return True

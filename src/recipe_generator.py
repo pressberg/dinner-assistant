@@ -4,7 +4,13 @@ from anthropic import Anthropic
 from typing import List, Dict, Optional
 import json
 import re
-from .config import ANTHROPIC_API_KEY, MODEL_NAME, PREFERENCES_FILE, USER_DATA_DIR
+from .config import (
+    ANTHROPIC_API_KEY,
+    MODEL_NAME,
+    PREFERENCES_FILE,
+    USER_DATA_DIR,
+    USER_PREFERENCES_FILE,
+)
 
 
 def load_allergies() -> list:
@@ -27,14 +33,19 @@ class RecipeGenerator:
         self.allergies = load_allergies()
 
     def _load_preferences(self) -> str:
-        """Load preferences.md content"""
+        """Load preferences.md, checking user dir first, then project root."""
+        # User-generated preferences (from onboarding)
+        if USER_PREFERENCES_FILE.exists():
+            with open(USER_PREFERENCES_FILE, "r", encoding="utf-8") as f:
+                return f.read()
+
+        # Fall back to project preferences.md (backward compat for existing users)
         try:
-            with open(PREFERENCES_FILE, 'r', encoding="utf-8") as f:
+            with open(PREFERENCES_FILE, "r", encoding="utf-8") as f:
                 return f.read()
         except FileNotFoundError:
             raise FileNotFoundError(
-                "preferences.md not found. "
-                "Please ensure it exists in the project root."
+                "preferences.md not found. Run onboarding or create one in the project root."
             )
 
     def generate_recipes(
