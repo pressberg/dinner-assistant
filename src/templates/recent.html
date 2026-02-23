@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Recent meals{% endblock %}
+{% block window_title %}Recent meals (last 14 days){% endblock %}
+
+{% block content %}
+{% if not meals %}
+<div class="empty-state">
+    <p>No meals logged in the last 14 days.</p>
+</div>
+{% else %}
+<table>
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Recipe</th>
+            <th>Cuisine</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for meal in meals %}
+        <tr>
+            <td class="text-muted">{{ meal.get('date', '')[:10] }}</td>
+            <td>{{ meal.get('recipe_name', '?') }}</td>
+            <td>{{ meal.get('cuisine_type', '?') }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if cuisines %}
+<p class="mt-2 text-muted">Cuisines to avoid for variety: {{ cuisines | join(', ') }}</p>
+{% endif %}
+{% endif %}
+
+<div class="nav-row">
+    <a href="{{ url_for('index') }}" class="button">Back</a>
+</div>
+{% endblock %}

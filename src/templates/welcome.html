@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Pressberg Kitchen{% endblock %}
+
+{% block content %}
+<div class="text-center">
+    <h1 style="color: var(--accent-color); margin-bottom: 4px;">Pressberg Kitchen</h1>
+    <p class="text-muted">Recipe Assistant</p>
+
+    {% if user_name %}
+    <p class="mt-2">Welcome back, {{ user_name }}.</p>
+    {% endif %}
+
+    <p class="mt-2">What would you like to do?</p>
+
+    <div class="mt-2" style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <a href="{{ url_for('ingredients') }}" class="button primary" style="width: 220px; text-align: center;">New dinner</a>
+        <a href="{{ url_for('history') }}" class="button" style="width: 220px; text-align: center;">Saved recipes</a>
+        <a href="{{ url_for('recent') }}" class="button" style="width: 220px; text-align: center;">Recent meals</a>
+        <a href="{{ url_for('settings') }}" class="button" style="width: 220px; text-align: center;">Settings</a>
+    </div>
+</div>
+{% endblock %}

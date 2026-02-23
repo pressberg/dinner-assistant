@@ -1,0 +1,326 @@
+/* Retro Mac OS 8/9 Style */
+
+:root {
+    --bg-color: #DDDDDD;
+    --button-bg: #CCCCCC;
+    --button-hover: #BBBBBB;
+    --text-color: #000000;
+    --accent-color: #000099;
+    --border-color: #888888;
+    --input-bg: #FFFFFF;
+    --highlight: #FFFFCC;
+    --error: #CC0000;
+    --success: #006600;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Geneva", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 700px;
+    margin: 0 auto;
+    background-color: var(--bg-color);
+}
+
+/* Retro window styling */
+.window {
+    border: 2px solid var(--border-color);
+    background: var(--bg-color);
+    box-shadow: 2px 2px 0 var(--border-color);
+}
+
+.window-title {
+    background: linear-gradient(to bottom, #CCCCCC, #AAAAAA);
+    padding: 8px 12px;
+    font-weight: bold;
+    border-bottom: 2px solid var(--border-color);
+    text-align: center;
+}
+
+.window-content {
+    padding: 20px;
+}
+
+/* Buttons - raised 3D effect */
+button, .button {
+    font-family: inherit;
+    font-size: 14px;
+    padding: 8px 16px;
+    background-color: var(--button-bg);
+    border: 2px outset #FFFFFF;
+    cursor: pointer;
+    display: inline-block;
+    text-decoration: none;
+    color: var(--text-color);
+}
+
+button:hover, .button:hover {
+    background-color: var(--button-hover);
+}
+
+button:active, .button:active {
+    border-style: inset;
+}
+
+button.primary, .button.primary {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+button.primary:hover, .button.primary:hover {
+    background-color: #0000BB;
+}
+
+/* Inputs - sunken effect */
+input[type="text"],
+input[type="password"],
+textarea {
+    font-family: "Monaco", "Courier New", monospace;
+    font-size: 14px;
+    padding: 8px;
+    border: 2px inset #FFFFFF;
+    background-color: var(--input-bg);
+    width: 100%;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+textarea:focus {
+    outline: 2px solid var(--accent-color);
+}
+
+/* Checkboxes */
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+/* Ingredient buttons */
+.ingredient-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+    margin: 16px 0;
+}
+
+.ingredient-btn {
+    padding: 10px;
+    text-align: center;
+    font-size: 13px;
+}
+
+.ingredient-btn.selected {
+    background-color: var(--highlight);
+    border-style: inset;
+}
+
+/* Recipe cards */
+.recipe-card {
+    border: 2px solid var(--border-color);
+    margin-bottom: 16px;
+    background: var(--bg-color);
+}
+
+.recipe-card.recommended {
+    border-color: var(--accent-color);
+    border-width: 3px;
+}
+
+.recipe-card-header {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.recipe-card-header h3 {
+    margin: 0 0 4px 0;
+    color: var(--accent-color);
+}
+
+.recipe-card-body {
+    padding: 12px;
+}
+
+.recipe-card-actions {
+    padding: 12px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Chat interface for interview */
+.chat-container {
+    border: 2px inset #FFFFFF;
+    background: var(--input-bg);
+    height: 400px;
+    overflow-y: auto;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.chat-message {
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    border-radius: 4px;
+}
+
+.chat-message.assistant {
+    background: #E8E8E8;
+    margin-right: 40px;
+}
+
+.chat-message.user {
+    background: var(--highlight);
+    margin-left: 40px;
+}
+
+.chat-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.chat-input-row input {
+    flex: 1;
+}
+
+/* Loading animation */
+.loading {
+    text-align: center;
+    padding: 40px;
+}
+
+.loading-dots {
+    font-family: "Monaco", monospace;
+    font-size: 24px;
+    color: var(--accent-color);
+}
+
+/* Tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+th {
+    background: var(--button-bg);
+    font-weight: bold;
+}
+
+/* Utility classes */
+.mt-1 { margin-top: 8px; }
+.mt-2 { margin-top: 16px; }
+.mt-3 { margin-top: 24px; }
+.mb-1 { margin-bottom: 8px; }
+.mb-2 { margin-bottom: 16px; }
+.text-center { text-align: center; }
+.text-muted { color: var(--border-color); }
+.text-error { color: var(--error); }
+.text-success { color: var(--success); }
+.flex-row { display: flex; gap: 8px; align-items: center; }
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+
+/* Navigation row */
+.nav-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+/* Allergy tag */
+.allergy-tag {
+    display: inline-block;
+    background: #FFCCCC;
+    border: 1px solid var(--error);
+    padding: 4px 10px;
+    margin: 4px;
+    font-weight: bold;
+}
+
+/* Recipe detail sections */
+.recipe-section {
+    margin-bottom: 16px;
+}
+
+.recipe-section h3 {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 4px;
+    margin-bottom: 8px;
+}
+
+.step-list {
+    counter-reset: steps;
+    list-style: none;
+    padding-left: 0;
+}
+
+.step-list li {
+    counter-increment: steps;
+    padding: 6px 0;
+    padding-left: 28px;
+    position: relative;
+}
+
+.step-list li::before {
+    content: counter(steps) ".";
+    position: absolute;
+    left: 0;
+    font-weight: bold;
+}
+
+/* Preferences preview */
+.preferences-preview {
+    font-family: "Monaco", "Courier New", monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    border: 2px inset #FFFFFF;
+    background: var(--input-bg);
+    padding: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* History row */
+.history-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: #EEEEEE;
+}
+
+.history-row:hover {
+    background: #E0E0E0;
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--border-color);
+}

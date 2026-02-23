@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Cooking preferences{% endblock %}
+{% block window_title %}Let's learn about your cooking style{% endblock %}
+
+{% block content %}
+<p class="text-muted mb-2">Answer naturally. This takes about 2 minutes.</p>
+
+<div class="chat-container" id="chatContainer"></div>
+
+<div class="chat-input-row">
+    <input type="text" id="chatInput" placeholder="Type your answer..." disabled>
+    <button id="sendBtn" onclick="sendMessage()" disabled>Send</button>
+</div>
+
+<p class="text-muted mt-1" id="statusText">Starting interview...</p>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const container = document.getElementById('chatContainer');
+const input = document.getElementById('chatInput');
+const sendBtn = document.getElementById('sendBtn');
+const statusText = document.getElementById('statusText');
+let isFirstMessage = true;
+
+function addMessage(text, role) {
+    const div = document.createElement('div');
+    div.className = 'chat-message ' + role;
+    div.textContent = text;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function setInputEnabled(enabled) {
+    input.disabled = !enabled;
+    sendBtn.disabled = !enabled;
+    if (enabled) input.focus();
+}
+
+function sendMessage() {
+    const text = input.value.trim();
+    if (!text) return;
+
+    addMessage(text, 'user');
+    input.value = '';
+    setInputEnabled(false);
+    statusText.textContent = 'Thinking...';
+
+    fetchMessage(text);
+}
+
+function fetchMessage(userText) {
+    const body = isFirstMessage ? {} : {message: userText};
+    isFirstMessage = false;
+
+    fetch('{{ url_for("onboarding_interview_message") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            statusText.textContent = data.error;
+            setInputEnabled(true);
+            return;
+        }
+
+        if (data.message) {
+            addMessage(data.message, 'assistant');
+        }
+
+        if (data.complete) {
+            statusText.textContent = 'Interview complete! Generating preferences...';
+            setTimeout(() => {
+                window.location.href = '{{ url_for("onboarding_review") }}';
+            }, 1500);
+        } else {
+            statusText.textContent = '';
+            setInputEnabled(true);
+        }
+    })
+    .catch(() => {
+        statusText.textContent = 'Error. Please try again.';
+        setInputEnabled(true);
+    });
+}
+
+input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !input.disabled) {
+        sendMessage();
+    }
+});
+
+// Start interview with first message from Claude
+fetchMessage('');
+</script>
+{% endblock %}

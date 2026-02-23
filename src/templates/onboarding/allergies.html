@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Allergies{% endblock %}
+{% block window_title %}{% if update_mode %}Update allergies{% else %}Food safety{% endif %}{% endblock %}
+
+{% block content %}
+<p><strong>Do you have any food allergies or ingredients you must NEVER eat?</strong></p>
+<p class="text-muted mb-2">This is a safety question. These will be strictly enforced in every recipe.</p>
+
+<form method="POST">
+    <div class="checkbox-group">
+        {% for name, examples in common_allergies %}
+        <label>
+            <input type="checkbox" name="allergies" value="{{ loop.index }}">
+            {{ name }}{% if examples %} <span class="text-muted">({{ examples }})</span>{% endif %}
+        </label>
+        {% endfor %}
+        <label>
+            <input type="checkbox" name="allergies" value="{{ common_allergies | length + 1 }}" id="noneCheck" onchange="handleNone(this)">
+            None of these
+        </label>
+    </div>
+
+    <div class="mt-2">
+        <label><strong>Any other allergies?</strong></label>
+        <input type="text" name="extra_allergies" placeholder="e.g., sesame, kiwi" class="mt-1">
+    </div>
+
+    <div class="nav-row">
+        {% if update_mode %}
+        <a href="{{ url_for('settings') }}" class="button">Cancel</a>
+        {% else %}
+        <a href="{{ url_for('onboarding_api_key') }}" class="button">Back</a>
+        {% endif %}
+        <button type="submit" class="primary">Next</button>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function handleNone(checkbox) {
+    if (checkbox.checked) {
+        document.querySelectorAll('input[name="allergies"]').forEach(cb => {
+            if (cb !== checkbox) cb.checked = false;
+        });
+    }
+}
+
+document.querySelectorAll('input[name="allergies"]').forEach(cb => {
+    if (cb.id !== 'noneCheck') {
+        cb.addEventListener('change', () => {
+            document.getElementById('noneCheck').checked = false;
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Confirm allergies{% endblock %}
+{% block window_title %}Confirm allergies{% endblock %}
+
+{% block content %}
+{% if allergies %}
+<p><strong>I'll NEVER suggest recipes containing:</strong></p>
+<div class="mt-2 mb-2">
+    {% for item in allergies %}
+    <span class="allergy-tag">{{ item }}</span>
+    {% endfor %}
+</div>
+{% else %}
+<p>No allergies selected. Recipes won't have any allergy restrictions.</p>
+{% endif %}
+
+<form method="POST">
+    <p class="mt-2"><strong>Is this correct?</strong></p>
+    <div class="flex-row mt-2">
+        <button type="submit" name="action" value="confirm" class="primary">Yes, continue</button>
+        <button type="submit" name="action" value="redo">No, go back</button>
+    </div>
+</form>
+{% endblock %}

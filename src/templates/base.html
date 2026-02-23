@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Pressberg Kitchen{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="window">
+            <div class="window-title">
+                {% block window_title %}Pressberg Kitchen Recipe Assistant{% endblock %}
+            </div>
+            <div class="window-content">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

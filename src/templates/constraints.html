@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Constraints{% endblock %}
+{% block window_title %}Any constraints?{% endblock %}
+
+{% block content %}
+<p class="text-muted mb-2">Check all that apply, or skip to generate.</p>
+
+<form method="POST" action="{{ url_for('generate') }}">
+    <div class="checkbox-group">
+        {% for label, value in constraint_options %}
+        <label>
+            <input type="checkbox" name="constraints" value="{{ value }}">
+            {{ label }}
+        </label>
+        {% endfor %}
+    </div>
+
+    <div class="mt-2">
+        <label><strong>Other constraints:</strong></label>
+        <input type="text" name="custom_constraint" placeholder="e.g., extra spicy, no dairy" class="mt-1">
+    </div>
+
+    <div class="nav-row">
+        <a href="{{ url_for('ingredients') }}" class="button">Back</a>
+        <button type="submit" class="button primary">Generate recipes</button>
+    </div>
+</form>
+{% endblock %}

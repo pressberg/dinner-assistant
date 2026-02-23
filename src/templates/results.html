@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Recipe options{% endblock %}
+{% block window_title %}Your dinner options{% endblock %}
+
+{% block content %}
+{% if recommendation.get('reasoning') %}
+<p class="mb-2"><strong>Recommended:</strong> Option {{ rec_index + 1 }} — {{ recommendation.reasoning }}</p>
+{% endif %}
+
+{% for recipe in recipes %}
+<div class="recipe-card {{ 'recommended' if loop.index0 == rec_index else '' }}">
+    <div class="recipe-card-header">
+        <h3>{{ '* ' if loop.index0 == rec_index else '' }}Option {{ loop.index }}: {{ recipe.name }}</h3>
+        <span class="text-muted">
+            {{ recipe.cuisine or '' }} &middot;
+            {{ recipe.difficulty or '' }} &middot;
+            {{ recipe.active_time_minutes or '?' }} min active /
+            {{ recipe.total_time_minutes or '?' }} min total
+        </span>
+    </div>
+    <div class="recipe-card-body">
+        {% if recipe.description %}
+        <p>{{ recipe.description }}</p>
+        {% endif %}
+
+        {% if recipe.ingredients %}
+        <p class="text-muted" style="font-size: 13px;">
+            Ingredients: {{ recipe.ingredients[:6] | join(', ') }}
+            {% if recipe.ingredients | length > 6 %}
+            ...and {{ recipe.ingredients | length - 6 }} more
+            {% endif %}
+        </p>
+        {% endif %}
+    </div>
+    <div class="recipe-card-actions">
+        <a href="{{ url_for('recipe_view', index=loop.index0) }}" class="button">View full</a>
+        <button onclick="saveRecipe({{ loop.index0 }}, false)">Save</button>
+        <button onclick="saveRecipe({{ loop.index0 }}, true)" class="primary">Make tonight</button>
+    </div>
+</div>
+{% endfor %}
+
+<div class="nav-row">
+    <a href="{{ url_for('ingredients') }}" class="button">Start over</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const recipes = {{ recipes | tojson }};
+
+function saveRecipe(index, makeTonight) {
+    const recipe = recipes[index];
+    fetch('{{ url_for("save_recipe") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({recipe: recipe, make_tonight: makeTonight})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            alert('Error: ' + data.error);
+        } else {
+            const msg = makeTonight
+                ? `"${recipe.name}" saved and logged. Enjoy!`
+                : `"${recipe.name}" saved to your collection.`;
+            alert(msg);
+        }
+    })
+    .catch(() => alert('Failed to save recipe.'));
+}
+</script>
+{% endblock %}

@@ -5,6 +5,44 @@
 
 ## Recent changes
 
+### Session: 2026-02-23 - Flask web interface
+- New `src/web.py` provides a browser-based UI at http://localhost:5000
+- `run_web.py` launcher in project root
+- Retro Mac OS 8/9 styling with `src/static/style.css`
+- Full onboarding flow in browser: name, API key, allergies (with confirm), chat-style AI interview, preference review
+- Recipe flow: ingredient selection (quick-add grid + custom), constraint checkboxes, async generation with loading screen, recipe cards with save/make-tonight actions, full recipe view
+- History, recent meals and settings pages
+- All templates in `src/templates/` extending `base.html` (retro window chrome)
+- Interview uses fetch-based chat UI posting to `/onboarding/interview/message` AJAX endpoint
+- Generation uses `/generate/run` AJAX endpoint with loading screen polling
+- Shares same backend as CLI and Tkinter GUI: `RecipeGenerator`, `HistoryManager`, onboarding functions
+- Flask session stores ingredients, constraints, recipes and interview state
+- Added `flask>=3.0.0` to requirements.txt
+
+#### Web routes
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/` | GET | Welcome/home (redirects to onboarding if needed) |
+| `/ingredients` | GET | Ingredient selection |
+| `/constraints` | GET/POST | Constraint checkboxes |
+| `/generate` | POST | Start generation (shows loading page) |
+| `/generate/run` | POST | AJAX: runs recipe generation |
+| `/results` | GET | Recipe cards |
+| `/recipe/<index>` | GET | Full recipe view |
+| `/save` | POST | AJAX: save recipe |
+| `/history` | GET | Saved recipes |
+| `/mark-made` | POST | AJAX: log meal |
+| `/recent` | GET | Recent meals |
+| `/settings` | GET | User settings |
+| `/onboarding/name` | GET/POST | Name input |
+| `/onboarding/api-key` | GET/POST | API key input + validation |
+| `/onboarding/allergies` | GET/POST | Allergy selection |
+| `/onboarding/allergies/confirm` | GET/POST | Confirm allergies |
+| `/onboarding/interview` | GET | Chat-style interview page |
+| `/onboarding/interview/message` | POST | AJAX: interview turn |
+| `/onboarding/review` | GET | Review generated preferences |
+| `/onboarding/complete` | POST | Finalize onboarding |
+
 ### Session: 2026-02-23 - Update preferences option
 - New CLI flags: `--setup` (re-run full onboarding) and `--update-preferences` (allergies + interview + prefs only)
 - Both back up existing `preferences.md` to `preferences.md.backup` before overwriting
@@ -75,7 +113,9 @@
 - `src/config.py` - Configuration, paths, preferences and API key resolution
 - `src/dinner.py` - CLI entry point (triggers onboarding if needed)
 - `src/gui.py` - Tkinter GUI (retro Mac OS 8/9 style)
+- `src/web.py` - Flask web interface (retro Mac OS 8/9 style)
 - `run_gui.py` - GUI launcher
+- `run_web.py` - Flask web launcher (port 5000)
 
 ## Data storage
 - User config: `~/.dinner-assistant/config.json` (name, allergies, onboarding state)

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Generating...{% endblock %}
+{% block window_title %}Generating recipes...{% endblock %}
+
+{% block content %}
+<div class="loading">
+    <p>Consulting Claude with your ingredients and preferences.</p>
+    <p>One moment.</p>
+    <div class="loading-dots" id="dots">.</div>
+    <p class="text-muted mt-3" id="status">Working...</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Animate dots
+let dotCount = 1;
+setInterval(() => {
+    dotCount = (dotCount % 3) + 1;
+    document.getElementById('dots').textContent = '.'.repeat(dotCount);
+}, 500);
+
+// Start generation
+fetch('{{ url_for("generate_run") }}', {method: 'POST'})
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            document.getElementById('status').innerHTML =
+                '<span class="text-error">' + data.error + '</span><br><br>' +
+                '<a href="{{ url_for("ingredients") }}" class="button">Try again</a>';
+            document.getElementById('dots').style.display = 'none';
+        } else {
+            window.location.href = '{{ url_for("results") }}';
+        }
+    })
+    .catch(() => {
+        document.getElementById('status').innerHTML =
+            '<span class="text-error">Something went wrong.</span><br><br>' +
+            '<a href="{{ url_for("ingredients") }}" class="button">Try again</a>';
+        document.getElementById('dots').style.display = 'none';
+    });
+</script>
+{% endblock %}

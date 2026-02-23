@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Select ingredients{% endblock %}
+{% block window_title %}What ingredients do you have?{% endblock %}
+
+{% block content %}
+<p class="text-muted mb-2">Tap to add, or type your own below. Pantry staples are assumed.</p>
+
+<form method="POST" action="{{ url_for('constraints') }}" id="ingredientForm">
+    <div class="ingredient-grid">
+        {% for ing in quick_ingredients %}
+        <button type="button" class="ingredient-btn" data-ingredient="{{ ing }}" onclick="toggleIngredient(this)">{{ ing }}</button>
+        {% endfor %}
+    </div>
+
+    <div class="mt-2">
+        <label><strong>Other ingredients:</strong></label>
+        <div class="flex-row mt-1">
+            <input type="text" id="customInput" placeholder="e.g., zucchini, ground beef" style="flex: 1;">
+            <button type="button" onclick="addCustom()">Add</button>
+        </div>
+    </div>
+
+    <div class="mt-2">
+        <strong>Selected:</strong>
+        <span id="selectedDisplay" class="text-muted">(none yet)</span>
+    </div>
+
+    <!-- Hidden inputs for selected ingredients -->
+    <div id="hiddenInputs"></div>
+
+    <div class="nav-row">
+        <a href="{{ url_for('index') }}" class="button">Back</a>
+        <button type="submit" class="button primary">Next</button>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const selected = new Set();
+
+function toggleIngredient(btn) {
+    const name = btn.dataset.ingredient;
+    if (selected.has(name)) {
+        selected.delete(name);
+        btn.classList.remove('selected');
+    } else {
+        selected.add(name);
+        btn.classList.add('selected');
+    }
+    updateDisplay();
+}
+
+function addCustom() {
+    const input = document.getElementById('customInput');
+    const text = input.value.trim();
+    if (text) {
+        text.split(',').forEach(item => {
+            item = item.trim();
+            if (item) selected.add(item);
+        });
+        input.value = '';
+        updateDisplay();
+    }
+}
+
+document.getElementById('customInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        addCustom();
+    }
+});
+
+function updateDisplay() {
+    const display = document.getElementById('selectedDisplay');
+    const hidden = document.getElementById('hiddenInputs');
+
+    if (selected.size === 0) {
+        display.textContent = '(none yet)';
+        display.className = 'text-muted';
+    } else {
+        display.textContent = Array.from(selected).join(', ');
+        display.className = '';
+    }
+
+    hidden.innerHTML = '';
+    selected.forEach(name => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'ingredients';
+        input.value = name;
+        hidden.appendChild(input);
+    });
+}
+
+document.getElementById('ingredientForm').addEventListener('submit', function(e) {
+    if (selected.size === 0) {
+        e.preventDefault();
+        alert('Please select at least one ingredient.');
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Saved recipes{% endblock %}
+{% block window_title %}Saved recipes{% endblock %}
+
+{% block content %}
+{% if not recipes %}
+<div class="empty-state">
+    <p>No saved recipes yet.</p>
+    <p class="mt-1">Generate some first!</p>
+    <a href="{{ url_for('ingredients') }}" class="button mt-2">New dinner</a>
+</div>
+{% else %}
+<table>
+    <thead>
+        <tr>
+            <th>Recipe</th>
+            <th>Cuisine</th>
+            <th>Difficulty</th>
+            <th>Made</th>
+            <th>Saved</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for recipe in recipes %}
+        <tr>
+            <td>{{ recipe.name }}</td>
+            <td>{{ recipe.get('cuisine', '?') }}</td>
+            <td>{{ recipe.get('difficulty', '?') }}</td>
+            <td>{{ recipe.get('times_made', 0) or '-' }}</td>
+            <td class="text-muted">{{ recipe.get('saved_at', '')[:10] }}</td>
+            <td>
+                <button onclick="markMade('{{ recipe.name }}', '{{ recipe.get("cuisine", "Unknown") }}')" style="font-size: 12px; padding: 4px 8px;">Made it</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<div class="nav-row">
+    <a href="{{ url_for('index') }}" class="button">Back</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function markMade(name, cuisine) {
+    fetch('{{ url_for("mark_made") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name: name, cuisine: cuisine})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            alert('Error: ' + data.error);
+        } else {
+            alert(`Logged "${name}" to recent meals.`);
+            location.reload();
+        }
+    })
+    .catch(() => alert('Failed to log meal.'));
+}
+</script>
+{% endblock %}
